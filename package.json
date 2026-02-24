@@ -1,0 +1,79 @@
+{
+  "name": "SAKURA收集组件",
+  "version": "1.1.0",
+  "description": "高性能Figma组件收集插件，具备智能扫描和优化的组件管理功能",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
+    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
+    "watch": "npm run build -- --watch",
+    "perf:test": "node --expose-gc performance-test.js",
+    "perf:monitor": "node performance-monitor.js"
+  },
+  "author": "SAKURA Team",
+  "license": "MIT",
+  "keywords": [
+    "figma",
+    "plugin",
+    "components",
+    "collector",
+    "performance",
+    "optimization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sakura/figma-component-collector.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sakura/figma-component-collector/issues"
+  },
+  "devDependencies": {
+    "@figma/eslint-plugin-figma-plugins": "*",
+    "@figma/plugin-typings": "*",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@figma/figma-plugins/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    },
+    "root": true,
+    "rules": {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ],
+      "@typescript-eslint/no-explicit-any": "warn"
+    }
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "performance": {
+    "optimizations": {
+      "concurrentScanning": true,
+      "adaptiveBatching": true,
+      "memoryMonitoring": true,
+      "progressiveRendering": true,
+      "cacheManagement": true
+    },
+    "benchmarks": {
+      "maxNodesPerSecond": 1000,
+      "maxComponentsPerFile": 5000,
+      "memoryLimitMB": 200
+    }
+  }
+}

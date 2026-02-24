@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    
+    body.has-results {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #1a1a1a;
+    }
+    
+    .section {
+      margin-bottom: 0px;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0;
+      border: 0;
+      flex-shrink: 0;
+    }
+    
+    .section:last-of-type {
+      margin-bottom: 24px;
+    }
+    
+    .mode-selector {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    .select-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    
+    .select-wrapper::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 16px;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><path fill="%23666" d="M7 10L3 6l.8-.8L7 8.4l3.2-3.2.8.8z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+    
+    .mode-select {
+      width: 100%;
+      padding: 14px 16px;
+      padding-right: 40px;
+      border: 2px solid #e5e5e5;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      appearance: none;
+      transition: all 0.2s ease;
+    }
+    
+    .mode-select:focus {
+      outline: none;
+      border-color: #18a0fb;
+      box-shadow: 0 0 0 3px rgba(24, 160, 251, 0.1);
+    }
+    
+    .mode-select:hover {
+      border-color: #ccc;
+    }
+    
+    .btn-refresh {
+      padding: 14px 16px;
+      border: 2px solid #e5e5e5;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      min-width: 56px;
+    }
+    
+    .btn-refresh:hover {
+      border-color: #18a0fb;
+      background: #f8fbff;
+    }
+    
+    .btn-refresh:active {
+      transform: scale(0.95);
+    }
+    
+    .stats {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #eeeeee;
+    }
+    
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+    
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .stat-value {
+      font-weight: 600;
+      color: #18a0fb;
+      font-size: 14px;
+    }
+    
+    .stat-highlight {
+      background: #e8f4fd;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .results-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .scope-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #e8f4fd;
+      color: #18a0fb;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 0;
+    }
+    
+    .results-header .filter-container {
+      margin-bottom: 0;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #666;
+      font-size: 14px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #18a0fb;
+      box-shadow: 0 0 0 3px rgba(24, 160, 251, 0.1);
+    }
+    
+    .button-group {
+      display: flex;
+      width: 96px;
+      gap: 12px;
+    }
+
+    /* 顶部扫描按钮容器（初始为上下排列，结果出来后改为左右排列） */
+    .scan-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 0;
+      width: 66.67%;
+      min-width: 200px;
+      max-width: 300px;
+    }
+    
+    body.has-results .scan-buttons {
+      flex-direction: row;
+      width: 100%;
+      max-width: none;
+    }
+    
+    button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: #18a0fb;
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #0d8ae0;
+    }
+    
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .btn-secondary:hover {
+      background: #e5e5e5;
+    }
+    
+    .component-list-container {
+      flex: 1;
+      min-height: 200px;
+      margin-top: 16px;
+      border: 0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    
+    .sticky-buttons {
+      position: sticky;
+      top: 0;
+      background: white;
+      padding: 16px 0;
+      margin: 0 -24px;
+      z-index: 10;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .sticky-buttons .button-group {
+      display: flex;
+      gap: 12px;
+      padding: 0 24px;
+      margin-bottom: 0;
+    }
+    
+    .sticky-buttons .btn-collect,
+    .sticky-buttons .btn-external {
+      flex: 1;
+    }
+    
+    .scrollable-section {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 200px;
+    }
+    
+    .component-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 4px 0;
+    }
+    
+    .component-item {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 16px;
+      background: white;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .component-item:hover {
+      border-color: #18a0fb;
+      box-shadow: 0 4px 12px rgba(24, 160, 251, 0.15);
+      transform: translateY(-2px);
+    }
+    
+    .component-name {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .component-preview {
+      width: 100%;
+      height: 80px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .preview-placeholder {
+      color: #ccc;
+      font-size: 12px;
+    }
+    
+    .preview-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    
+    .component-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .component-type {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .type-main {
+      background: #e8f4fd;
+      color: #18a0fb;
+    }
+    
+    .type-variant {
+      background: #f3e5f5;
+      color: #9c27b0;
+    }
+    
+    .source-internal {
+      background: #e8fadf;
+      color: #4caf50;
+    }
+    
+    .source-external {
+      background: #fff3e0;
+      color: #e65100;
+    }
+    
+    .component-source {
+      color: #999;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    
+    .source-link {
+      color: #18a0fb;
+      text-decoration: none;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: background 0.15s;
+    }
+    
+    .source-link:hover {
+      background: #e8f4fd;
+      text-decoration: underline;
+    }
+    
+    .variant-badge {
+      background: #9c27b0;
+      color: white;
+      font-size: 10px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    
+    .component-page {
+      color: #999;
+      font-size: 12px;
+    }
+    
+    .instance-count {
+      color: #18a0fb;
+      font-size: 12px;
+      font-weight: 600;
+      background: #e8f4fd;
+      padding: 4px 10px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    
+    .message {
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: none;
+      font-size: 14px;
+    }
+    
+    .message.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+    
+    .message.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+    
+    .message.warning {
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffe0b2;
+    }
+    
+    .message.show {
+      display: block;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #999;
+      font-size: 14px;
+    }
+    
+    .empty-state-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 32px 16px;
+      color: #999;
+      font-size: 14px;
+    }
+    
+    .loading-spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #18a0fb;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #f0f0f0;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .progress-container.show {
+      display: block;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: #18a0fb;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+      position: absolute;
+      top: 8px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e5e5e5;
+      padding: 20px 24px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+      transform: translateY(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .footer.hidden {
+      transform: translateY(100%);
+    }
+    
+    .footer .button-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+    
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    
+    .footer-stats {
+      display: flex;
+      justify-content: space-around;
+      padding: 0 0;
+      font-size: 12px;
+    }
+    
+    .footer-stat {
+      text-align: center;
+    }
+    
+    .footer-stat-label {
+      color: #999;
+    }
+    
+    .footer-stat-value {
+      font-weight: 600;
+      color: #18a0fb;
+    }
+    
+    .btn-collect {
+      flex: 1;
+      background: #18a0fb;
+      color: white;
+    }
+    
+    .btn-collect:hover:not(:disabled) {
+      background: #0d8ae0;
+    }
+    
+    .btn-external {
+      flex: 1;
+      background: #7b61ff;
+      color: white;
+    }
+    
+    .btn-external:hover:not(:disabled) {
+      background: #6849e8;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .fade-in {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    .fade-in.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* 弹窗样式 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .modal-overlay.show {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 320px;
+      max-width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      transform: scale(0.9);
+      transition: transform 0.2s ease;
+      z-index: 1001;
+    }
+    
+    .modal-overlay.show .modal {
+      transform: scale(1);
+    }
+    
+    .modal-header {
+      margin-bottom: 20px;
+    }
+    
+    .modal-header h2 {
+      margin-bottom: 0;
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      justify-content: flex-end;
+    }
+    
+    .modal-actions button {
+      flex: 0 0 auto;
+      min-width: 80px;
+    }
+    
+    .btn-cancel {
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .btn-cancel:hover {
+      background: #e5e5e5;
+    }
+    
+    .btn-confirm {
+      background: #18a0fb;
+      color: white;
+    }
+    
+    .btn-confirm:hover {
+      background: #0d8ae0;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 480px) {
+      .section {
+        padding: 16px;
+      }
+      
+      .component-list {
+        grid-template-columns: 1fr;
+      }
+      
+      .results-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .filter-container {
+        justify-content: space-between;
+      }
+    }
+    
+    /* 滚动条样式 */
+    .scrollable-section::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    .scrollable-section::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 6px;
+    }
+    
+    .scrollable-section::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 6px;
+    }
+    
+    .scrollable-section::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+    
+    /* 选中状态样式 */
+    .selected {
+      border-color: #18a0fb !important;
+      box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.2) !important;
+    }
+    
+    /* 空状态图标动画 */
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    /* 表单输入错误状态 */
+    .form-error {
+      border-color: #f44336 !important;
+      box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+    }
+    
+    .error-message {
+      color: #f44336;
+      font-size: 12px;
+      margin-top: 4px;
+      display: none;
+    }
+    
+    .error-message.show {
+      display: block;
+    }
+    
+    /* 加载微调动画 */
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    
+    .loading-text {
+      animation: fadeInOut 1.5s infinite;
+    }
+    
+    /* 底部固定区域 */
+    .actions-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e5e5e5;
+      padding: 20px 24px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+      transform: translateY(0);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    
+    .actions-footer.hidden {
+      transform: translateY(100%);
+    }
+    
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    
+    .footer-stats {
+      display: flex;
+      justify-content: space-around;
+      font-size: 12px;
+      flex: 1;
+    }
+    
+    .footer-stat {
+      text-align: center;
+      min-width: 60px;
+    }
+  </style>
+</head>
+<body>
+  <div class="message" id="message"></div>
+  
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">正在处理...</div>
+    <div class="progress-text" id="progressEstimate" style="font-size: 11px; color: #999; text-align: center; margin-top: 4px;"></div>
+  </div>
+  
+  <!-- 扫描前UI -->
+  <div class="main-content" id="preScanUI">
+    <div class="section" style="box-shadow: none; border: none; padding: 0; display: flex; justify-content: center; width: 100%;">
+      <div class="button-group scan-buttons">
+        <button id="scanFileBtn" class="btn-primary" style="padding: 16px; font-size: 16px; width: 100%;">整个文件</button>
+        <button id="scanSelectionBtn" class="btn-secondary" style="padding: 16px; font-size: 16px; width: 100%;">当前页面</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 扫描后UI -->
+  <div class="main-content hidden" id="postScanUI">
+    <div class="section">
+      <div class="results-header">
+        <span class="scope-badge" id="scopeBadge">当前页面</span>
+        <div class="filter-container">
+          <select class="filter-select" id="sourceFilter">
+            <option value="all">全部组件</option>
+            <option value="internal">当前文件</option>
+            <option value="external">外部文件</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="component-list-container">
+        <div class="component-list scrollable-section" id="componentList">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            加载中...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 底部固定操作区域 -->
+  <div class="actions-footer hidden" id="actionsFooter">
+    <div class="footer-content">
+      <div class="footer-stats">
+        <div class="footer-stat">
+          <div class="footer-stat-label">组件数</div>
+          <div class="footer-stat-value" id="footerComponentCount">0</div>
+        </div>
+        <div class="footer-stat">
+          <div class="footer-stat-label">实例数</div>
+          <div class="footer-stat-value" id="footerInstanceCount">0</div>
+        </div>
+        <div class="footer-stat">
+          <div class="footer-stat-label">变体集</div>
+          <div class="footer-stat-value" id="footerComponentSetCount">0</div>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn-collect" id="collectBtn">收集</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 收集设置弹窗 -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ 收集设置</h2>
+      </div>
+      <div class="form-group">
+        <label for="pageName">目标页面名称:</label>
+        <input 
+          type="text" 
+          id="pageName" 
+          placeholder="输入页面名称..."
+          value="📦 Components Library"
+        >
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="cancelSettings">取消</button>
+        <button class="btn-confirm" id="confirmSettings">确认</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // 全局变量
+    let isScanned = false;
+    let currentMode = 'file';
+    let lastScanData = null;
+    let filteredComponents = null;
+    
+    // 获取 DOM 元素
+    const preScanUI = document.getElementById('preScanUI');
+    const postScanUI = document.getElementById('postScanUI');
+    const componentList = document.getElementById('componentList');
+    const scopeBadge = document.getElementById('scopeBadge');
+    const sourceFilter = document.getElementById('sourceFilter');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const progressEstimate = document.getElementById('progressEstimate');
+    const messageEl = document.getElementById('message');
+    const settingsModal = document.getElementById('settingsModal');
+    const pageNameInput = document.getElementById('pageName');
+    const actionsFooter = document.getElementById('actionsFooter');
+    
+    // 扫描按钮
+    const scanFileBtn = document.getElementById('scanFileBtn');
+    const scanSelectionBtn = document.getElementById('scanSelectionBtn');
+    
+    // 收集按钮
+    const collectBtn = document.getElementById('collectBtn');
+    
+    // 模态框按钮
+    const cancelSettingsBtn = document.getElementById('cancelSettings');
+    const confirmSettingsBtn = document.getElementById('confirmSettings');
+    
+    // 页面加载完成后初始化
+    window.addEventListener('load', function() {
+      setupEventListeners();
+      setupMessageHandlers();
+    });
+    
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 扫描按钮事件
+      scanFileBtn.addEventListener('click', function() {
+        scanComponents('file');
+      });
+      
+      scanSelectionBtn.addEventListener('click', function() {
+        // 根据按钮当前文本决定扫描模式
+        if (this.textContent === '当前选择') {
+          scanComponents('selection');
+        } else {
+          scanComponents('page');
+        }
+      });
+      
+      // 收集按钮事件
+      if (collectBtn) {
+        collectBtn.addEventListener('click', function() {
+          if (settingsModal) {
+            settingsModal.classList.add('show');
+          }
+        });
+      }
+      
+      // 筛选器事件
+      sourceFilter.addEventListener('change', function() {
+        if (lastScanData) {
+          filterComponents(this.value);
+        }
+      });
+      
+      // 模态框事件
+      cancelSettingsBtn.addEventListener('click', function() {
+        settingsModal.classList.remove('show');
+      });
+      
+      confirmSettingsBtn.addEventListener('click', function() {
+        const pageName = pageNameInput.value.trim();
+        if (!pageName) {
+          showMessage('请输入目标页面名称', 'error');
+          return;
+        }
+        
+        settingsModal.classList.remove('show');
+        collectComponents(pageName);
+      });
+    }
+    
+    // 设置消息处理器
+    function setupMessageHandlers() {
+      window.onmessage = function(event) {
+        const msg = event.data.pluginMessage;
+        
+        if (!msg) return;
+        
+        if (msg.type === 'selection-changed') {
+          // 更新按钮状态
+          if (scanSelectionBtn) {
+            if (msg.hasSelection) {
+              scanSelectionBtn.textContent = '当前选择';
+              scanSelectionBtn.classList.remove('btn-secondary');
+              scanSelectionBtn.classList.add('btn-primary');
+            } else {
+              scanSelectionBtn.textContent = '当前页面';
+              scanSelectionBtn.classList.remove('btn-primary');
+              scanSelectionBtn.classList.add('btn-secondary');
+            }
+          }
+        } else if (msg.type === 'page-changed') {
+          // 页面切换时的处理
+          console.log('切换到页面:', msg.pageName);
+        } else if (msg.type === 'progress') {
+          // 显示进度条
+          progressContainer.classList.add('show');
+          if (progressBar) {
+            progressBar.style.width = msg.progress + '%';
+          }
+          if (progressText) {
+            progressText.textContent = msg.message;
+          }
+          if (progressEstimate && msg.estimate) {
+            progressEstimate.textContent = msg.estimate;
+          }
+        } else if (msg.type === 'scan-results') {
+          // 隐藏进度条
+          progressContainer.classList.remove('show');
+          
+          // 第一次扫描后调整窗口大小
+          const scannedWidth = 420;
+          const scannedHeight = 600;
+          
+          if (!isScanned) {
+            // 切换到扫描后UI
+            preScanUI.classList.add('hidden');
+            postScanUI.classList.remove('hidden');
+            
+            // 添加 has-results 类以调整布局
+            document.body.classList.add('has-results');
+            
+            // 显示底部操作区域
+            if (actionsFooter) {
+              actionsFooter.classList.remove('hidden');
+            }
+            
+            // 调整窗口大小
+            isScanned = true;
+            try {
+              parent.postMessage({ 
+                pluginMessage: { 
+                  type: 'resize-ui', 
+                  width: scannedWidth, 
+                  height: scannedHeight 
+                } 
+              }, '*');
+            } catch (error) {
+              console.log('Failed to send resize message');
+            }
+          }
+          
+          // 显示其他模块
+          showModules();
+          
+          lastScanData = msg.data;
+          currentMode = msg.data.scope;
+          filteredComponents = null; // 重置筛选结果
+          
+          // 更新徽章
+          const badgeText = {
+            'file': '整个文件',
+            'page': '当前页面',
+            'selection': '当前选择'
+          };
+          if (scopeBadge) {
+            scopeBadge.textContent = badgeText[currentMode];
+          }
+          
+          // 重置筛选器
+          if (sourceFilter) {
+            sourceFilter.value = 'all';
+          }
+          
+          // 检查元素是否存在（插件可能正在关闭）
+          const footerComponentCountEl = document.getElementById('footerComponentCount');
+          const footerInstanceCountEl = document.getElementById('footerInstanceCount');
+          const footerComponentSetCountEl = document.getElementById('footerComponentSetCount');
+          
+          if (footerComponentCountEl) {
+            footerComponentCountEl.textContent = msg.data.totalComponents;
+          }
+          
+          if (footerInstanceCountEl) {
+            footerInstanceCountEl.textContent = msg.data.totalInstances;
+          }
+          
+          // 显示变体组件统计
+          if (msg.data.totalComponentSets && msg.data.totalComponentSets > 0) {
+            if (footerComponentSetCountEl) {
+              footerComponentSetCountEl.textContent = msg.data.totalComponentSets;
+            }
+          } else {
+            if (footerComponentSetCountEl) {
+              footerComponentSetCountEl.textContent = '-';
+            }
+          }
+          
+          const listEl = document.getElementById('componentList');
+          
+          if (listEl) {
+            if (msg.data.error) {
+              listEl.innerHTML = `
+                <div class="empty-state">
+                  <div class="empty-icon">⚠️</div>
+                  <div class="empty-text">${msg.data.error}</div>
+                </div>
+              `;
+            } else {
+              renderComponentList(listEl, msg.data.components);
+            }
+          }
+        } else if (msg.type === 'success') {
+          // 隐藏进度条
+          progressContainer.classList.remove('show');
+          
+          showMessage(msg.message, 'success');
+          
+          // 显示底部按钮
+          if (actionsFooter) {
+            actionsFooter.classList.remove('hidden');
+          }
+          
+          // 检查元素是否存在（插件可能正在关闭）
+          if (collectBtn) {
+            collectBtn.disabled = false;
+            collectBtn.textContent = '收集';
+          }
+          
+          // 重新扫描以更新统计
+          refreshScan();
+        } else if (msg.type === 'error') {
+          // 隐藏进度条
+          progressContainer.classList.remove('show');
+          
+          // 显示底部按钮
+          if (actionsFooter) {
+            actionsFooter.classList.remove('hidden');
+          }
+          
+          showMessage(msg.message, 'error');
+          
+          // 检查元素是否存在（插件可能正在关闭）
+          if (collectBtn) {
+            collectBtn.disabled = false;
+            collectBtn.textContent = '收集';
+          }
+        }
+      };
+    }
+    
+    // 扫描组件
+    function scanComponents(mode) {
+      try {
+        parent.postMessage({ pluginMessage: { type: `scan-${mode}` } }, '*');
+      } catch (error) {
+        console.log('Failed to send scan message');
+      }
+    }
+    
+    // 显示消息
+    function showMessage(text, type) {
+      if (messageEl) {
+        messageEl.textContent = text;
+        messageEl.className = `message ${type} show`;
+        
+        // 3秒后自动隐藏成功消息
+        if (type === 'success') {
+          setTimeout(() => {
+            messageEl.classList.remove('show');
+          }, 3000);
+        }
+      }
+    }
+    
+    // 显示模块
+    function showModules() {
+      // 显示筛选器
+      const filterContainer = document.querySelector('.filter-container');
+      if (filterContainer) {
+        filterContainer.style.opacity = '1';
+        filterContainer.style.transform = 'translateY(0)';
+      }
+      
+      // 显示组件列表
+      const listContainer = document.querySelector('.component-list-container');
+      if (listContainer) {
+        listContainer.style.opacity = '1';
+        listContainer.style.transform = 'translateY(0)';
+      }
+    }
+    
+    // 渲染组件列表
+    function renderComponentList(container, components) {
+      if (!container) return;
+      
+      if (!components || components.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <div class="empty-text">未找到组件</div>
+          </div>
+        `;
+        return;
+      }
+      
+      // 生成组件项 HTML
+      const componentItems = components.map(component => {
+        const isVariant = !!component.componentSet;
+        const isExternal = component.isExternal === true;
+        const sourceClass = isExternal ? 'source-external' : 'source-internal';
+        const sourceText = isExternal ? '外部文件' : '当前文件';
+        const typeClass = isVariant ? 'type-variant' : 'type-main';
+        const typeText = isVariant ? '变体' : '组件';
+        const variantBadge = isVariant ? '<span class="variant-badge">变体</span>' : '';
+        const pageName = component.pageName || '未知页面';
+        
+        return `
+          <div class="component-item" data-id="${component.id}">
+            <div class="component-preview">
+              <div class="preview-placeholder">预览图</div>
+            </div>
+            <div class="component-name">
+              ${component.name}
+              ${variantBadge}
+            </div>
+            <div class="component-meta">
+              <span class="component-type ${typeClass}">${typeText}</span>
+              <span class="instance-count">${component.instanceCount} 实例</span>
+            </div>
+            <div class="component-source">
+              <span class="component-page">${pageName}</span>
+            </div>
+            <div class="component-source">
+              <span class="component-type ${sourceClass}">${sourceText}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      container.innerHTML = componentItems;
+    }
+    
+    // 筛选组件
+    function filterComponents(filterType) {
+      if (!lastScanData) return;
+      
+      let filtered = lastScanData.components;
+      
+      switch (filterType) {
+        case 'internal':
+          filtered = filtered.filter(c => c.isExternal === false);
+          break;
+        case 'external':
+          filtered = filtered.filter(c => c.isExternal === true);
+          break;
+        default:
+          // 'all' - 不过滤
+          break;
+      }
+      
+      filteredComponents = filtered;
+      
+      // 更新组件列表
+      const listEl = document.getElementById('componentList');
+      if (listEl) {
+        renderComponentList(listEl, filtered);
+      }
+      
+      // 更新统计信息
+      updateFilteredStats(filtered);
+    }
+    
+    // 更新筛选后的统计信息
+    function updateFilteredStats(filtered) {
+      const footerComponentCountEl = document.getElementById('footerComponentCount');
+      const footerInstanceCountEl = document.getElementById('footerInstanceCount');
+      
+      if (footerComponentCountEl) {
+        footerComponentCountEl.textContent = filtered.length;
+      }
+      
+      const totalInstances = filtered.reduce((sum, component) => sum + component.instanceCount, 0);
+      if (footerInstanceCountEl) {
+        footerInstanceCountEl.textContent = totalInstances;
+      }
+    }
+    
+    // 刷新扫描
+    function refreshScan() {
+      if (lastScanData) {
+        scanComponents(currentMode);
+      }
+    }
+    
+    // 收集组件
+    function collectComponents(pageName) {
+      // 根据筛选器的值决定是否只收集外部组件
+      const externalOnly = sourceFilter.value === 'external';
+      
+      try {
+        parent.postMessage({ 
+          pluginMessage: { 
+            type: 'collect-components',
+            targetPageName: pageName,
+            scope: currentMode,
+            externalOnly: externalOnly
+          } 
+        }, '*');
+        
+        // 禁用按钮并显示加载状态
+        if (collectBtn) {
+          collectBtn.disabled = true;
+          collectBtn.textContent = '收集中...';
+        }
+      } catch (error) {
+        console.log('Failed to send collect message');
+      }
+    }
+  </script>
+</body>
+</html>

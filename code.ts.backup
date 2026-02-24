@@ -1,0 +1,1159 @@
+// Figma Component Collector Plugin
+// 主插件代码
+
+/// <reference types="@figma/plugin-typings" />
+
+// 性能监控类
+class PerformanceMonitor {
+  private measurements = new Map<string, { start: number; duration?: number }>();
+  private history = new Map<string, number[]>();
+
+  startMeasurement(name: string) {
+    this.measurements.set(name, { start: Date.now() });
+    // 清理过期的测量数据
+    if (this.measurements.size > 100) {
+      const firstKey = Array.from(this.measurements.keys())[0];
+      this.measurements.delete(firstKey);
+    }
+  }
+  
+  endMeasurement(name: string): number {
+    const measurement = this.measurements.get(name);
+    if (!measurement) {
+      return 0;
+    }
+    
+    measurement.duration = Date.now() - measurement.start;
+    const duration = measurement.duration;
+    
+    // 存储历史数据用于分析
+    if (!this.history.has(name)) {
+      this.history.set(name, []);
+    }
+    const history = this.history.get(name)!;
+    history.push(duration);
+    if (history.length > 50) {
+      history.shift(); // 保持最近50次记录
+    }
+    
+    this.measurements.delete(name);
+    return duration;
+  }
+  
+  getAverageDuration(name: string): number {
+    const history = this.history.get(name);
+    if (!history || history.length === 0) {
+      return 0;
+    }
+    return history.reduce((a, b) => a + b, 0) / history.length;
+  }
+  
+  printReport() {
+    console.log('=== Performance Report ===');
+    for (const [name, durations] of this.history) {
+      const avg = this.getAverageDuration(name);
+      const min = Math.min(...durations);
+      const max = Math.max(...durations);
+      console.log(`${name}: avg=${avg.toFixed(2)}ms, min=${min.toFixed(2)}ms, max=${max.toFixed(2)}ms, count=${durations.length}`);
+    }
+    console.log('=========================');
+  }
+}
+
+// 缓存管理器 - 用于缓存计算结果
+class CacheManager<T> {
+  private cache = new Map<string, { value: T; timestamp: number }>();
+  private maxSize: number;
+  private ttl: number; // time to live in milliseconds
+  
+  constructor(maxSize = 1000, ttl = 5 * 60 * 1000) { // 默认5分钟过期
+    this.maxSize = maxSize;
+    this.ttl = ttl;
+  }
+  
+  set(key: string, value: T): void {
+    // 清理过期缓存
+    this.cleanup();
+    
+    // 如果缓存已满，删除最老的条目
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = Array.from(this.cache.keys())[0];
+      this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, {
+      value,
+      timestamp: Date.now()
+    });
+  }
+  
+  get(key: string): T | undefined {
+    const item = this.cache.get(key);
+    if (!item) return undefined;
+    
+    // 检查是否过期
+    if (Date.now() - item.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    
+    return item.value;
+  }
+  
+  has(key: string): boolean {
+    return this.get(key) !== undefined;
+  }
+  
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
+  
+  clear(): void {
+    this.cache.clear();
+  }
+  
+  size(): number {
+    this.cleanup();
+    return this.cache.size;
+  }
+  
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, item] of this.cache.entries()) {
+      if (now - item.timestamp > this.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// 性能调优器
+class PerformanceTuner {
+  private config = {
+    maxConcurrent: 8,
+    batchSize: 50,
+    memoryThreshold: 100 * 1024 * 1024 // 100MB
+  };
+  
+  adjustForSystem(load: number): void {
+    if (load > 0.8) {
+      this.config.maxConcurrent = Math.max(2, Math.floor(this.config.maxConcurrent * 0.7));
+      this.config.batchSize = Math.max(10, Math.floor(this.config.batchSize * 0.8));
+    } else if (load < 0.3) {
+      this.config.maxConcurrent = Math.min(12, Math.ceil(this.config.maxConcurrent * 1.2));
+      this.config.batchSize = Math.min(100, Math.ceil(this.config.batchSize * 1.1));
+    }
+  }
+  
+  getConfig() {
+    return { ...this.config };
+  }
+}
+
+// 性能监控包装函数
+function withPerformanceMonitoring<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  operationName?: string
+): T {
+  return (async (...args: any[]) => {
+    const name = operationName || fn.name || 'unknown-operation';
+    perfMonitor.startMeasurement(name);
+    
+    try {
+      const result = await fn(...args);
+      return result;
+    } finally {
+      perfMonitor.endMeasurement(name);
+    }
+  }) as T;
+}
+
+// 全局实例
+const perfMonitor = new PerformanceMonitor();
+const cacheManager = new CacheManager();
+const tuner = new PerformanceTuner();
+
+// 添加防抖定时器变量
+let selectionChangeTimeout: number | null = null;
+let lastSelectionString = '';
+let lastPageId = figma.currentPage.id;
+
+figma.showUI(__html__, { width: 340, height: 300 });
+
+// 添加状态变量，跟踪是否已完成首次扫描
+let hasScanned = false;
+
+// 监听选择变化
+figma.on('selectionchange', () => {
+  // 生成当前选择的标识字符串
+  const currentSelectionString = figma.currentPage.selection
+    .map(node => node.id)
+    .sort()
+    .join(',');
+  
+  // 如果选择发生了变化,发送消息给 UI
+  if (currentSelectionString !== lastSelectionString) {
+    lastSelectionString = currentSelectionString;
+    
+    // 清除之前的定时器
+    if (selectionChangeTimeout !== null) {
+      clearTimeout(selectionChangeTimeout);
+    }
+    
+    // 设置新的防抖定时器（延迟300毫秒）
+    selectionChangeTimeout = setTimeout(() => {
+      try {
+        figma.ui.postMessage({
+          type: 'selection-changed',
+          hasSelection: figma.currentPage.selection.length > 0
+        });
+      } catch (error) {
+        // 忽略发送消息时的错误（可能是插件正在关闭）
+        console.log('Failed to send selection-changed message, plugin might be closing');
+      }
+    }, 300) as any as number;
+  }
+});
+
+// 监听页面切换
+figma.on('currentpagechange', () => {
+  const currentPageId = figma.currentPage.id;
+  
+  // 如果页面发生了变化,发送消息给 UI
+  if (currentPageId !== lastPageId) {
+    lastPageId = currentPageId;
+    
+    try {
+      figma.ui.postMessage({
+        type: 'page-changed',
+        pageName: figma.currentPage.name
+      });
+    } catch (error) {
+      // 忽略发送消息时的错误（可能是插件正在关闭）
+      console.log('Failed to send page-changed message, plugin might be closing');
+    }
+  }
+});
+
+// 存储找到的主组件信息
+interface ComponentInfo {
+  component: ComponentNode;
+  instanceCount: number;
+  instances: InstanceNode[];
+  componentSet?: ComponentSetNode; // 如果是变体组件,存储其父级 ComponentSet
+}
+
+// 存储 ComponentSet 信息
+interface ComponentSetInfo {
+  componentSet: ComponentSetNode;
+  components: Set<string>; // 该 Set 下所有组件的 ID
+  instanceCount: number;
+}
+
+// 监听来自 UI 的消息
+figma.ui.onmessage = async (msg) => {
+  perfMonitor.startMeasurement('message-processing');
+  
+  // 根据消息类型处理不同操作
+  switch (msg.type) {
+    case 'resize-ui':
+      // 处理窗口大小调整
+      figma.ui.resize(msg.width, msg.height);
+      break;
+      
+    case 'scan-selection':
+      // 扫描当前选择
+      const selectionResult = await scanFileForComponents('selection');
+      figma.ui.postMessage({ type: 'scan-results', data: selectionResult });
+      // 标记已完成首次扫描
+      if (!hasScanned) {
+        hasScanned = true;
+      }
+      break;
+      
+    case 'scan-page':
+      // 扫描当前页面
+      const pageResult = await scanFileForComponents('page');
+      figma.ui.postMessage({ type: 'scan-results', data: pageResult });
+      // 标记已完成首次扫描
+      if (!hasScanned) {
+        hasScanned = true;
+      }
+      break;
+      
+    case 'scan-file':
+      // 扫描整个文件
+      const fileResult = await scanFileForComponents('file');
+      figma.ui.postMessage({ type: 'scan-results', data: fileResult });
+      // 标记已完成首次扫描
+      if (!hasScanned) {
+        hasScanned = true;
+      }
+      break;
+      
+    case 'collect-components':
+      // 收集组件
+      await collectAndOrganizeComponents(
+        msg.targetPageName, 
+        msg.scope, 
+        msg.externalOnly
+      );
+      break;
+  }
+  
+  perfMonitor.endMeasurement('message-processing');
+  
+  // 定期输出性能报告（每10%的概率）
+  if (Math.random() < 0.1) {
+    perfMonitor.printReport();
+  }
+};
+
+
+// 扫描文件或选中画板中的所有组件
+async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
+  console.log('scanFileForComponents called with scope:', scope);
+  
+  const componentsMap = new Map<string, ComponentInfo>();
+  const startTime = Date.now();
+  
+  if (scope === 'selection') {
+    console.log('Processing selection mode');
+    const selection = figma.currentPage.selection;
+    console.log('Current selection length:', selection.length);
+    
+    if (selection.length === 0) {
+      console.log('No selection found, switching to page mode');
+      scope = 'page';
+    } else {
+      console.log('Processing selected nodes');
+      const totalNodes = selection.length;
+      let processedNodes = 0;
+      
+      const baseConcurrencyLimit = 8;
+      const adaptiveConcurrencyLimit = Math.min(baseConcurrencyLimit, Math.max(4, Math.floor(totalNodes / 100)));
+      const maxNodesToProcess = 3000;
+      const nodesToProcess = totalNodes > maxNodesToProcess ? selection.slice(0, maxNodesToProcess) : selection;
+      const actualTotalNodes = nodesToProcess.length;
+      
+      const optimalBatchSize = Math.min(50, Math.max(10, Math.floor(actualTotalNodes / 20)));
+      
+      for (let i = 0; i < nodesToProcess.length; i += optimalBatchSize) {
+        const batch = nodesToProcess.slice(i, i + optimalBatchSize);
+        const promises = batch.map(node => scanNode(node, componentsMap));
+        
+        await Promise.all(promises);
+        processedNodes += batch.length;
+        
+        const shouldUpdateProgress = processedNodes % Math.max(25, Math.floor(actualTotalNodes / 20)) === 0 || 
+                                   processedNodes === actualTotalNodes;
+        
+        if (shouldUpdateProgress) {
+          const progress = Math.floor((processedNodes / actualTotalNodes) * 10);
+          const elapsedTime = Date.now() - startTime;
+          const estimatedTotalTime = (elapsedTime / processedNodes) * actualTotalNodes;
+          const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
+          
+          try {
+            figma.ui.postMessage({ 
+              type: 'progress', 
+              message: `扫描选择项 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` + 
+                       (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''),
+              progress: progress
+            });
+          } catch (error) {
+            console.log('Failed to send progress message, plugin might be closing');
+            return {
+              totalComponents: 0,
+              totalInstances: 0,
+              totalComponentSets: 0,
+              components: [],
+              scope: 'selection',
+              error: '插件正在关闭'
+            };
+          }
+        }
+        
+        if (i % (optimalBatchSize * 3) === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      
+      if (totalNodes > maxNodesToProcess) {
+        figma.notify(`注意：选择的节点过多，仅处理了前${maxNodesToProcess}个节点。`, { timeout: 5000 });
+      }
+    }
+    
+    return buildScanResults(componentsMap, scope);
+  }
+  
+  if (scope === 'page') {
+    console.log('Processing page mode');
+    const currentPage = figma.currentPage;
+    
+    try {
+      figma.ui.postMessage({ 
+        type: 'progress', 
+        message: `开始扫描页面: ${currentPage.name}`,
+        progress: 10
+      });
+    } catch (error) {
+      console.log('Failed to send progress message, plugin might be closing');
+      return {
+        totalComponents: 0,
+        totalInstances: 0,
+        totalComponentSets: 0,
+        components: [],
+        scope: 'page',
+        error: '插件正在关闭'
+      };
+    }
+    
+    const totalNodes = currentPage.children.length;
+    let processedNodes = 0;
+    
+    const maxNodesToProcess = 3000;
+    const nodesToProcess = totalNodes > maxNodesToProcess ? currentPage.children.slice(0, maxNodesToProcess) : [...currentPage.children];
+    const actualTotalNodes = nodesToProcess.length;
+    
+    const optimalBatchSize = Math.min(50, Math.max(10, Math.floor(actualTotalNodes / 20)));
+    
+    for (let i = 0; i < nodesToProcess.length; i += optimalBatchSize) {
+      const batch = nodesToProcess.slice(i, i + optimalBatchSize);
+      const promises = batch.map(node => scanNode(node, componentsMap));
+      
+      await Promise.all(promises);
+      processedNodes += batch.length;
+      
+      const shouldUpdateProgress = processedNodes % Math.max(25, Math.floor(actualTotalNodes / 20)) === 0 || 
+                                 processedNodes === actualTotalNodes;
+      
+      if (shouldUpdateProgress) {
+        const progress = Math.floor((processedNodes / actualTotalNodes) * 80) + 10;
+        const elapsedTime = Date.now() - startTime;
+        const estimatedTotalTime = (elapsedTime / processedNodes) * actualTotalNodes;
+        const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
+        
+        try {
+          figma.ui.postMessage({ 
+            type: 'progress', 
+            message: `扫描页面 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` + 
+                     (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''),
+            progress: progress
+          });
+        } catch (error) {
+          console.log('Failed to send progress message, plugin might be closing');
+          return {
+            totalComponents: 0,
+            totalInstances: 0,
+            totalComponentSets: 0,
+            components: [],
+            scope: 'page',
+            error: '插件正在关闭'
+          };
+        }
+      }
+      
+      if (i % (optimalBatchSize * 3) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+    
+    if (totalNodes > maxNodesToProcess) {
+      figma.notify(`注意：页面节点过多，仅处理了前${maxNodesToProcess}个节点。`, { timeout: 5000 });
+    }
+    
+    try {
+      figma.ui.postMessage({ 
+        type: 'progress', 
+        message: '扫描当前页面完成',
+        progress: 90
+      });
+    } catch (error) {
+      console.log('Failed to send progress message, plugin might be closing');
+      return {
+        totalComponents: 0,
+        totalInstances: 0,
+        totalComponentSets: 0,
+        components: [],
+        scope: 'page',
+        error: '插件正在关闭'
+      };
+    }
+  } else {
+    console.log('Processing file mode');
+    const totalPageCount = figma.root.children.length;
+    let processedPages = 0;
+    
+    const concurrencyLimit = 8;
+    const pages = [...figma.root.children];
+    
+    for (let i = 0; i < pages.length; i += concurrencyLimit) {
+      const batch = pages.slice(i, i + concurrencyLimit);
+      const promises = batch.map(page => scanNode(page, componentsMap));
+      
+      await Promise.all(promises);
+      processedPages += batch.length;
+      
+      try {
+        figma.ui.postMessage({ 
+          type: 'progress', 
+          message: `扫描页面 ${processedPages}/${totalPageCount}: ${batch.map(p => p.name).join(', ')}`,
+          progress: Math.floor((processedPages / totalPageCount) * 100)
+        });
+      } catch (error) {
+        console.log('Failed to send progress message, plugin might be closing');
+        return {
+          totalComponents: 0,
+          totalInstances: 0,
+          totalComponentSets: 0,
+          components: [],
+          scope: 'file',
+          error: '插件正在关闭'
+        };
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+  
+  return buildScanResults(componentsMap, scope);
+}
+
+
+
+// 递归构建实例映射，添加缓存避免重复扫描
+async function buildInstanceMapFromNode(node: BaseNode, instanceMap: Map<string, InstanceNode[]>, scannedNodes = new Set<string>()) {
+  // 性能优化1：增强重复扫描检测
+  if (scannedNodes.has(node.id)) {
+    return;
+  }
+  
+  scannedNodes.add(node.id);
+  
+  // 性能优化2：优化实例处理逻辑
+  if (node.type === 'INSTANCE') {
+    const instance = node as InstanceNode;
+    const componentId = instance.mainComponent?.id;
+    
+    if (componentId) {
+      // 性能优化3：使用更高效的Map操作
+      const existingInstances = instanceMap.get(componentId);
+      if (existingInstances) {
+        // 性能优化4：限制实例数量，避免内存占用过大
+        const maxInstancesPerComponent = 200;
+        if (existingInstances.length < maxInstancesPerComponent) {
+          existingInstances.push(instance);
+        } else if (existingInstances.length === maxInstancesPerComponent) {
+          existingInstances.push(instance);
+          console.log(`组件 ${componentId} 的实例数量已达上限 (${maxInstancesPerComponent})`);
+        }
+      } else {
+        instanceMap.set(componentId, [instance]);
+      }
+    }
+  }
+  
+  // 性能优化5：优化子节点处理策略
+  if ('children' in node) {
+    const children = node.children;
+    const totalChildren = children.length;
+    
+    // 性能优化6：根据不同规模采用不同策略
+    if (totalChildren > 3000) {
+      // 超大规模：使用迭代+智能批处理
+      const nodeQueue: BaseNode[] = [...children];
+      let processedCount = 0;
+      const adaptiveBatchSize = Math.min(30, Math.max(10, Math.floor(totalChildren / 100)));
+      
+      while (nodeQueue.length > 0 && instanceMap.size < 10000) { // 内存保护
+        const batch = nodeQueue.splice(0, Math.min(adaptiveBatchSize, nodeQueue.length));
+        await Promise.all(batch.map(childNode => buildInstanceMapFromNode(childNode, instanceMap, scannedNodes)));
+        processedCount += batch.length;
+        
+        // 性能优化7：降低更新频率并添加内存检查
+        if (processedCount % 800 === 0) {
+          try {
+            figma.ui.postMessage({
+              type: 'progress',
+              message: `构建实例映射: ${Math.round((processedCount / totalChildren) * 100)}%`,
+              progress: Math.min(29, 10 + Math.round((processedCount / totalChildren) * 20))
+            });
+          } catch (error) {
+            console.log('Failed to send progress message, plugin might be closing');
+            return;
+          }
+          
+          // 性能优化8：内存监控和保护
+          if (instanceMap.size > 15000) {
+            console.warn('实例映射过大，提前终止以保护内存');
+            break;
+          }
+        }
+      }
+    } else if (totalChildren > 200) {
+      // 中等规模：分批处理
+      const batchSize = Math.min(30, Math.ceil(totalChildren / 8));
+      for (let i = 0; i < totalChildren; i += batchSize) {
+        const batch = children.slice(i, Math.min(i + batchSize, totalChildren));
+        await Promise.all(batch.map(child => buildInstanceMapFromNode(child, instanceMap, scannedNodes)));
+        
+        // 性能优化9：智能控制权释放
+        if (i > 0 && i % (batchSize * 2) === 0) {
+          queueMicrotask(() => {});
+        }
+      }
+    } else {
+      // 小规模：直接处理
+      for (let i = 0; i < totalChildren; i++) {
+        await buildInstanceMapFromNode(children[i], instanceMap, scannedNodes);
+      }
+    }
+  }
+}
+
+
+// 在整个文档中查找所有使用指定组件的实例
+async function findAllInstancesInDocument(componentId: string): Promise<InstanceNode[]> {
+  const allInstances: InstanceNode[] = [];
+  
+  // 遍历所有页面
+  for (const page of figma.root.children) {
+    await findInstancesInNode(page, componentId, allInstances);
+  }
+  
+  return allInstances;
+}
+
+// 递归查找节点中的实例
+async function findInstancesInNode(node: BaseNode, componentId: string, instances: InstanceNode[]) {
+  // 进一步优化：限制实例数量以避免内存占用过大
+  const maxInstances = 500;
+  if (instances.length >= maxInstances) {
+    return;
+  }
+  
+  if (node.type === 'INSTANCE') {
+    const instance = node as InstanceNode;
+    if (instance.mainComponent?.id === componentId) {
+      instances.push(instance);
+    }
+  }
+  
+  if ('children' in node) {
+    // 进一步优化：使用迭代方式处理大量子节点，避免调用栈溢出
+    const children = [...node.children];
+    while (children.length > 0 && instances.length < maxInstances) {
+      const child = children.pop()!;
+      await findInstancesInNode(child, componentId, instances);
+    }
+  }
+}
+
+// 递归构建实例映射，添加缓存避免重复扫描 - 使用性能监控包装
+const buildInstanceMapFromNode = withPerformanceMonitoring(
+  async (node: BaseNode, instanceMap: Map<string, InstanceNode[]>, scannedNodes = new Set<string>()) => {
+  // 性能优化1：增强重复扫描检测
+  if (scannedNodes.has(node.id)) {
+    return;
+  }
+  
+  scannedNodes.add(node.id);
+  
+  // 性能优化2：优化实例处理逻辑
+  if (node.type === 'INSTANCE') {
+    const instance = node as InstanceNode;
+    const componentId = instance.mainComponent?.id;
+    
+    if (componentId) {
+      // 性能优化3：使用更高效的Map操作
+      const existingInstances = instanceMap.get(componentId);
+      if (existingInstances) {
+        // 性能优化4：限制实例数量，避免内存占用过大
+        const maxInstancesPerComponent = 200;
+        if (existingInstances.length < maxInstancesPerComponent) {
+          existingInstances.push(instance);
+        } else if (existingInstances.length === maxInstancesPerComponent) {
+          existingInstances.push(instance);
+          console.log(`组件 ${componentId} 的实例数量已达上限 (${maxInstancesPerComponent})`);
+        }
+      } else {
+        instanceMap.set(componentId, [instance]);
+      }
+    }
+  }
+  
+  // 性能优化5：优化子节点处理策略
+  if ('children' in node) {
+    const children = node.children;
+    const totalChildren = children.length;
+    
+    // 性能优化6：根据不同规模采用不同策略
+    if (totalChildren > 3000) {
+      // 超大规模：使用迭代+智能批处理
+      const nodeQueue: BaseNode[] = [...children];
+      let processedCount = 0;
+      const adaptiveBatchSize = Math.min(30, Math.max(10, Math.floor(totalChildren / 100)));
+      
+      while (nodeQueue.length > 0 && instanceMap.size < 10000) {
+        const batch = nodeQueue.splice(0, Math.min(adaptiveBatchSize, nodeQueue.length));
+        await Promise.all(batch.map(childNode => buildInstanceMapFromNode(childNode, instanceMap, scannedNodes)));
+        processedCount += batch.length;
+        
+        // 性能优化7：降低更新频率并添加内存检查
+        if (processedCount % 800 === 0) {
+          try {
+            figma.ui.postMessage({
+              type: 'progress',
+              message: `构建实例映射: ${Math.round((processedCount / totalChildren) * 100)}%`,
+              progress: Math.min(29, 10 + Math.round((processedCount / totalChildren) * 20))
+            });
+          } catch (error) {
+            console.log('Failed to send progress message, plugin might be closing');
+            return;
+          }
+          
+          // 性能优化8：内存监控和保护
+          if (instanceMap.size > 15000) {
+            console.warn('实例映射过大，提前终止以保护内存');
+            break;
+          }
+        }
+      }
+    } else if (totalChildren > 200) {
+      // 中等规模：分批处理
+      const batchSize = Math.min(30, Math.ceil(totalChildren / 8));
+      for (let i = 0; i < totalChildren; i += batchSize) {
+        const batch = children.slice(i, Math.min(i + batchSize, totalChildren));
+        await Promise.all(batch.map(child => buildInstanceMapFromNode(child, instanceMap, scannedNodes)));
+        
+        // 性能优化9：智能控制权释放
+        if (i > 0 && i % (batchSize * 2) === 0) {
+          queueMicrotask(() => {});
+        }
+      }
+    } else {
+      // 小规模：直接处理
+      for (let i = 0; i < totalChildren; i++) {
+        await buildInstanceMapFromNode(children[i], instanceMap, scannedNodes);
+      }
+    }
+  }
+}, 'build-instance-map-from-node');
+
+// 在整个文档中查找所有使用指定组件的实例
+async function findAllInstancesInDocument(componentId: string): Promise<InstanceNode[]> {
+  const allInstances: InstanceNode[] = [];
+  
+  // 遍历所有页面
+  for (const page of figma.root.children) {
+    await findInstancesInNode(page, componentId, allInstances);
+  }
+  
+  return allInstances;
+}
+
+// 递归查找节点中的实例
+async function findInstancesInNode(node: BaseNode, componentId: string, instances: InstanceNode[]) {
+  // 进一步优化：限制实例数量以避免内存占用过大
+  const maxInstances = 500;
+  if (instances.length >= maxInstances) {
+    return;
+  }
+  
+  if (node.type === 'INSTANCE') {
+    const instance = node as InstanceNode;
+    if (instance.mainComponent?.id === componentId) {
+      instances.push(instance);
+    }
+  }
+  
+  if ('children' in node) {
+    // 进一步优化：使用迭代方式处理大量子节点，避免调用栈溢出
+    const children = [...node.children];
+    while (children.length > 0 && instances.length < maxInstances) {
+      const child = children.pop()!;
+      await findInstancesInNode(child, componentId, instances);
+    }
+  }
+}
+
+// 性能优化10：优化文档实例映射构建 - 使用性能监控包装
+const buildDocumentInstanceMap = withPerformanceMonitoring(
+  async (): Promise<Map<string, InstanceNode[]>> => {
+  const instanceMap = new Map<string, InstanceNode[]>();
+  
+  // 性能优化11：预估处理时间和资源
+  const pages = figma.root.children;
+  const totalPageCount = pages.length;
+  let processedPages = 0;
+  
+  // 性能优化12：动态调整并发限制
+  const adaptiveConcurrencyLimit = Math.min(6, Math.max(3, Math.floor(totalPageCount / 2)));
+  const startTime = Date.now();
+  
+  for (let i = 0; i < pages.length; i += adaptiveConcurrencyLimit) {
+    const batch = pages.slice(i, i + adaptiveConcurrencyLimit);
+    const promises = batch.map(page => buildInstanceMapFromNode(page, instanceMap));
+    
+    await Promise.all(promises);
+    processedPages += batch.length;
+    
+    // 性能优化13：智能进度更新
+    const shouldUpdateProgress = processedPages % Math.max(2, Math.floor(totalPageCount / 5)) === 0 || 
+                                processedPages === totalPageCount;
+    
+    if (shouldUpdateProgress) {
+      try {
+        const elapsedTime = Date.now() - startTime;
+        const estimatedTotalTime = (elapsedTime / processedPages) * totalPageCount;
+        const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
+        
+        figma.ui.postMessage({
+          type: 'progress',
+          message: `构建实例映射: ${Math.round((processedPages / totalPageCount) * 100)}%，预计剩余: ${remainingTime}秒`,
+          progress: Math.min(29, 10 + Math.round((processedPages / totalPageCount) * 20))
+        });
+      } catch (error) {
+        console.log('Failed to send progress message, plugin might be closing');
+        return instanceMap;
+      }
+    }
+    
+    // 性能优化14：阶段性释放控制权
+    if (i > 0 && i % (adaptiveConcurrencyLimit * 2) === 0) {
+      await new Promise(resolve => setTimeout(resolve, 1)); // 微小延迟让出控制权
+    }
+    
+    // 性能优化15：内存保护检查
+    if (instanceMap.size > 20000) {
+      figma.notify('检测到大量实例，已启用内存保护模式', { timeout: 3000 });
+      break;
+    }
+  }
+  
+  console.log(`实例映射构建完成，共处理 ${instanceMap.size} 个唯一组件`);
+  return instanceMap;
+},
+'build-document-instance-map'
+);
+
+// 导出原始函数以便内部引用
+const originalBuildDocumentInstanceMap = buildDocumentInstanceMap;
+
+
+
+// 收集并组织主组件到目标页面
+async function collectAndOrganizeComponents(targetPageName: string, scope: 'file' | 'page' | 'selection', externalOnly: boolean = false) {
+  const componentsMap = new Map<string, ComponentInfo>();
+  const startTime = Date.now();
+  
+  try {
+    figma.ui.postMessage({ 
+      type: 'progress', 
+      message: '正在扫描组件...',
+      progress: 0
+    });
+  } catch (error) {
+    console.log('Failed to send progress message, plugin might be closing');
+    return;
+  }
+  
+  await performComponentScanning(scope, componentsMap, startTime);
+  
+  if (componentsMap.size === 0) {
+    throw new Error('未找到任何组件实例');
+  }
+  
+  if (externalOnly) {
+    await filterExternalComponents(componentsMap);
+  }
+  
+  await sendProgressMessage('正在扫描文档中的所有实例...', 15);
+  
+  const instanceMap = await buildDocumentInstanceMap();
+  
+  await sendProgressMessage('正在创建组件库页面...', 35);
+  
+  const targetPage = await getOrCreateTargetPage(targetPageName);
+  figma.currentPage = targetPage;
+  
+  await processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime);
+}
+
+async function performComponentScanning(scope: string, componentsMap: Map<string, ComponentInfo>, startTime: number) {
+  if (scope === 'selection') {
+    const selection = figma.currentPage.selection;
+    if (selection.length === 0) {
+      throw new Error('请先选择一个画板或节点');
+    }
+    
+    const totalNodes = selection.length;
+    const maxNodesToProcess = 3000;
+    const nodesToProcess = totalNodes > maxNodesToProcess ? selection.slice(0, maxNodesToProcess) : selection;
+    const actualTotalNodes = nodesToProcess.length;
+    
+    const adaptiveBatchSize = Math.min(50, Math.max(10, Math.floor(actualTotalNodes / 20)));
+    let processedNodes = 0;
+    
+    for (let i = 0; i < nodesToProcess.length; i += adaptiveBatchSize) {
+      const batch = nodesToProcess.slice(i, i + adaptiveBatchSize);
+      await Promise.all(batch.map(node => scanNode(node, componentsMap)));
+      processedNodes += batch.length;
+      
+      if (processedNodes % Math.max(25, Math.floor(actualTotalNodes / 10)) === 0) {
+        const progress = Math.floor((processedNodes / actualTotalNodes) * 10);
+        const elapsedTime = Date.now() - startTime;
+        const estimatedTotalTime = (elapsedTime / processedNodes) * actualTotalNodes;
+        const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
+        
+        await sendProgressMessage(
+          `扫描选择项 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` + 
+          (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''),
+          progress
+        );
+      }
+      
+      if (i % (adaptiveBatchSize * 3) === 0) {
+        queueMicrotask(() => {});
+      }
+    }
+    
+    if (totalNodes > maxNodesToProcess) {
+      figma.notify(`注意：选择的节点过多，仅处理了前${maxNodesToProcess}个节点。`, { timeout: 5000 });
+    }
+  } else if (scope === 'page') {
+    await scanNode(figma.currentPage, componentsMap);
+    await sendProgressMessage('扫描当前页面完成', 90);
+  } else {
+    const totalPageCount = figma.root.children.length;
+    let processedPages = 0;
+    const adaptiveConcurrencyLimit = Math.min(8, Math.max(4, Math.floor(totalPageCount / 2)));
+    const pages = [...figma.root.children];
+    
+    for (let i = 0; i < pages.length; i += adaptiveConcurrencyLimit) {
+      const batch = pages.slice(i, i + adaptiveConcurrencyLimit);
+      await Promise.all(batch.map(page => scanNode(page, componentsMap)));
+      processedPages += batch.length;
+      
+      await sendProgressMessage(
+        `扫描页面 ${processedPages}/${totalPageCount}: ${batch.map(p => p.name).join(', ')}`,
+        Math.floor((processedPages / totalPageCount) * 100)
+      );
+      
+      if (i % (adaptiveConcurrencyLimit * 2) === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+  }
+}
+
+async function filterExternalComponents(componentsMap: Map<string, ComponentInfo>) {
+  const externalComponents = new Map<string, ComponentInfo>();
+  const componentArray = Array.from(componentsMap.entries());
+  const batchSize = 50;
+  
+  for (let i = 0; i < componentArray.length; i += batchSize) {
+    const batch = componentArray.slice(i, i + batchSize);
+    
+    batch.forEach(([key, info]) => {
+      const targetNode = info.componentSet || info.component;
+      const firstInstance = info.instances[0];
+      let isExternal = false;
+      
+      if (firstInstance && firstInstance.mainComponent) {
+        const mainComp = firstInstance.mainComponent;
+        const componentKey = mainComp.key;
+        
+        if (componentKey && componentKey.includes(':')) {
+          isExternal = true;
+        } else {
+          const isInCurrentDocument = figma.root.children.some(page => 
+            page.findOne(node => node.id === targetNode.id) !== null
+          );
+          isExternal = !isInCurrentDocument;
+        }
+      }
+      
+      if (isExternal) {
+        externalComponents.set(key, info);
+      }
+    });
+    
+    if (i > 0 && i % (batchSize * 2) === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+  
+  if (externalComponents.size === 0) {
+    throw new Error('未找到任何外部组件');
+  }
+  
+  componentsMap.clear();
+  for (const [key, value] of externalComponents) {
+    componentsMap.set(key, value);
+  }
+}
+
+async function getOrCreateTargetPage(targetPageName: string): Promise<PageNode> {
+  let targetPage = figma.root.children.find(
+    page => page.name === targetPageName
+  ) as PageNode;
+  
+  if (!targetPage) {
+    targetPage = figma.createPage();
+    targetPage.name = targetPageName;
+  }
+  
+  return targetPage;
+}
+
+async function sendProgressMessage(message: string, progress: number) {
+  try {
+    figma.ui.postMessage({ type: 'progress', message, progress });
+  } catch (error) {
+    console.log('Failed to send progress message, plugin might be closing');
+  }
+}
+
+async function processAndArrangeComponents(
+  componentsMap: Map<string, ComponentInfo>, 
+  instanceMap: Map<string, InstanceNode[]>, 
+  targetPage: PageNode, 
+  startTime: number
+) {
+  let xOffset = 0;
+  let yOffset = 0;
+  const spacing = 30;
+  const maxWidth = 4000;
+  let maxHeightInRow = 0;
+  
+  const processedComponents: SceneNode[] = [];
+  let componentSetCount = 0;
+  let singleComponentCount = 0;
+  let totalInstancesRebound = 0;
+  
+  const totalComponents = componentsMap.size;
+  let processedCount = 0;
+  const componentArray = Array.from(componentsMap.entries());
+  const adaptiveBatchSize = Math.min(30, Math.max(10, Math.floor(totalComponents / 10)));
+  
+  for (let i = 0; i < componentArray.length; i += adaptiveBatchSize) {
+    const batch = componentArray.slice(i, i + adaptiveBatchSize);
+    
+    await Promise.all(batch.map(async ([key, info]) => {
+      processedCount++;
+      
+      if (info.componentSet) {
+        await processComponentSet(info, targetPage, instanceMap, processedComponents);
+        componentSetCount++;
+      } else {
+        await processSingleComponent(info, targetPage, instanceMap, processedComponents);
+        singleComponentCount++;
+      }
+      
+      const currentNode = info.componentSet || info.component;
+      const nodeWidth = currentNode.width + spacing;
+      const nodeHeight = currentNode.height + spacing;
+      maxHeightInRow = Math.max(maxHeightInRow, nodeHeight);
+      
+      if (xOffset + nodeWidth > maxWidth) {
+        xOffset = 0;
+        yOffset += maxHeightInRow;
+        maxHeightInRow = nodeHeight;
+      }
+      
+      currentNode.x = xOffset;
+      currentNode.y = yOffset;
+      xOffset += nodeWidth;
+      
+      const instances = instanceMap.get(currentNode.id) || [];
+      totalInstancesRebound += instances.length;
+      
+      return currentNode;
+    }));
+    
+    const overallProgress = 35 + Math.floor((processedCount / totalComponents) * 55);
+    const elapsedTime = Date.now() - startTime;
+    const estimatedTotalTime = (elapsedTime / processedCount) * totalComponents;
+    const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
+    
+    await sendProgressMessage(
+      `正在处理组件 ${processedCount}/${totalComponents}，预计剩余时间: ${remainingTime}秒`,
+      overallProgress
+    );
+    
+    if (i > 0 && i % (adaptiveBatchSize * 2) === 0) {
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+  }
+  
+  if (processedComponents.length > 0) {
+    figma.currentPage.selection = processedComponents;
+  }
+  
+  console.log(`处理完成: ${componentSetCount} 个变体组件集, ${singleComponentCount} 个单组件`);
+  console.log(`实例重新绑定数量: ${totalInstancesRebound}`);
+}
+
+async function processComponentSet(
+  info: ComponentInfo, 
+  targetPage: PageNode, 
+  instanceMap: Map<string, InstanceNode[]>, 
+  processedComponents: SceneNode[]
+) {
+  const componentSet = info.componentSet!;
+  let existingSet = targetPage.findOne(n => n.id === componentSet.id) as ComponentSetNode | null;
+  
+  if (!existingSet) {
+    const clonedSet = componentSet.clone();
+    targetPage.appendChild(clonedSet);
+    processedComponents.push(clonedSet);
+    existingSet = clonedSet;
+  }
+  
+  const instances = instanceMap.get(componentSet.id) || [];
+  await Promise.all(instances.map(async instance => {
+    try {
+      const variantKey = instance.variantProperties ? 
+        Object.values(instance.variantProperties).join(', ') : 'default';
+        
+      const newVariant = existingSet!.findOne(n => 
+        n.type === 'COMPONENT' && 
+        n.name === instance.mainComponent?.name
+      ) as ComponentNode | null;
+      
+      if (newVariant) {
+        instance.swapComponent(newVariant);
+      }
+    } catch (error) {
+      console.log(`无法重新绑定实例: ${error}`);
+    }
+  }));
+}
+
+async function processSingleComponent(
+  info: ComponentInfo, 
+  targetPage: PageNode, 
+  instanceMap: Map<string, InstanceNode[]>, 
+  processedComponents: SceneNode[]
+) {
+  const component = info.component;
+  let existingComponent = targetPage.findOne(n => n.id === component.id) as ComponentNode | null;
+  
+  if (!existingComponent) {
+    const clonedComponent = component.clone();
+    targetPage.appendChild(clonedComponent);
+    processedComponents.push(clonedComponent);
+    existingComponent = clonedComponent;
+  }
+  
+  const instances = instanceMap.get(component.id) || [];
+  await Promise.all(instances.map(async instance => {
+    try {
+      instance.swapComponent(existingComponent!);
+    } catch (error) {
+      console.log(`无法重新绑定实例: ${error}`);
+    }
+  }));
+}
