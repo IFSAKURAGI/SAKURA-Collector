@@ -5,8 +5,8 @@
   "main": "code.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
-    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
+    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules --ignore-pattern performance-tools.ts .",
+    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --ignore-pattern performance-tools.ts --fix .",
     "watch": "npm run build -- --watch",
     "perf:test": "node --expose-gc performance-test.js",
     "perf:monitor": "node performance-monitor.js"
@@ -44,7 +44,7 @@
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-      "project": "./tsconfig.json"
+      "project": "./tsconfig.eslint.json"
     },
     "root": true,
     "rules": {

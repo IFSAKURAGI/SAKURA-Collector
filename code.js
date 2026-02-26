@@ -53,107 +53,13 @@ class PerformanceMonitor {
         console.log('=========================');
     }
 }
-// 缓存管理器 - 用于缓存计算结果
-class CacheManager {
-    constructor(maxSize = 1000, ttl = 5 * 60 * 1000) {
-        this.cache = new Map();
-        this.maxSize = maxSize;
-        this.ttl = ttl;
-    }
-    set(key, value) {
-        // 清理过期缓存
-        this.cleanup();
-        // 如果缓存已满，删除最老的条目
-        if (this.cache.size >= this.maxSize) {
-            const firstKey = Array.from(this.cache.keys())[0];
-            this.cache.delete(firstKey);
-        }
-        this.cache.set(key, {
-            value,
-            timestamp: Date.now()
-        });
-    }
-    get(key) {
-        const item = this.cache.get(key);
-        if (!item)
-            return undefined;
-        // 检查是否过期
-        if (Date.now() - item.timestamp > this.ttl) {
-            this.cache.delete(key);
-            return undefined;
-        }
-        return item.value;
-    }
-    has(key) {
-        return this.get(key) !== undefined;
-    }
-    delete(key) {
-        return this.cache.delete(key);
-    }
-    clear() {
-        this.cache.clear();
-    }
-    size() {
-        this.cleanup();
-        return this.cache.size;
-    }
-    cleanup() {
-        const now = Date.now();
-        for (const [key, item] of this.cache.entries()) {
-            if (now - item.timestamp > this.ttl) {
-                this.cache.delete(key);
-            }
-        }
-    }
-}
-// 性能调优器
-class PerformanceTuner {
-    constructor() {
-        this.config = {
-            maxConcurrent: 8,
-            batchSize: 50,
-            memoryThreshold: 100 * 1024 * 1024 // 100MB
-        };
-    }
-    adjustForSystem(load) {
-        if (load > 0.8) {
-            this.config.maxConcurrent = Math.max(2, Math.floor(this.config.maxConcurrent * 0.7));
-            this.config.batchSize = Math.max(10, Math.floor(this.config.batchSize * 0.8));
-        }
-        else if (load < 0.3) {
-            this.config.maxConcurrent = Math.min(12, Math.ceil(this.config.maxConcurrent * 1.2));
-            this.config.batchSize = Math.min(100, Math.ceil(this.config.batchSize * 1.1));
-        }
-    }
-    getConfig() {
-        return Object.assign({}, this.config);
-    }
-}
-// 性能监控包装函数
-function withPerformanceMonitoring(fn, operationName) {
-    return (async (...args) => {
-        const name = operationName || fn.name || 'unknown-operation';
-        perfMonitor.startMeasurement(name);
-        try {
-            const result = await fn(...args);
-            return result;
-        }
-        finally {
-            perfMonitor.endMeasurement(name);
-        }
-    });
-}
 // 全局实例
 const perfMonitor = new PerformanceMonitor();
-const cacheManager = new CacheManager();
-const tuner = new PerformanceTuner();
 // 添加防抖定时器变量
 let selectionChangeTimeout = null;
 let lastSelectionString = '';
 let lastPageId = figma.currentPage.id;
-figma.showUI(__html__, { width: 340, height: 300 });
-// 添加状态变量，跟踪是否已完成首次扫描
-let hasScanned = false;
+figma.showUI(__html__, { width: 340, height: 600 });
 // 监听选择变化
 figma.on('selectionchange', () => {
     // 生成当前选择的标识字符串
@@ -206,44 +112,58 @@ figma.ui.onmessage = async (msg) => {
     perfMonitor.startMeasurement('message-processing');
     // 根据消息类型处理不同操作
     switch (msg.type) {
-        case 'resize-ui':
+        case 'resize-ui': {
             // 处理窗口大小调整
             figma.ui.resize(msg.width, msg.height);
             break;
-        case 'scan-selection':
+        }
+        case 'scan-selection': {
             // 扫描当前选择
             const selectionResult = await scanFileForComponents('selection');
             figma.ui.postMessage({ type: 'scan-results', data: selectionResult });
-            // 标记已完成首次扫描
-            if (!hasScanned) {
-                hasScanned = true;
-            }
             break;
-        case 'scan-page':
+        }
+        case 'scan-page': {
             // 扫描当前页面
             const pageResult = await scanFileForComponents('page');
             figma.ui.postMessage({ type: 'scan-results', data: pageResult });
-            // 标记已完成首次扫描
-            if (!hasScanned) {
-                hasScanned = true;
-            }
             break;
-        case 'scan-file':
+        }
+        case 'scan-file': {
             // 扫描整个文件
             const fileResult = await scanFileForComponents('file');
             figma.ui.postMessage({ type: 'scan-results', data: fileResult });
-            // 标记已完成首次扫描
-            if (!hasScanned) {
-                hasScanned = true;
+            break;
+        }
+        case 'focus-component': {
+            const { sourceNodeId, firstInstanceId } = msg;
+            try {
+                const masterNode = figma.getNodeById(sourceNodeId);
+                const nodeToSelect = masterNode !== null && masterNode !== void 0 ? masterNode : (firstInstanceId ? figma.getNodeById(firstInstanceId) : null);
+                if (nodeToSelect) {
+                    figma.currentPage.selection = [nodeToSelect];
+                    figma.viewport.scrollAndZoomIntoView([nodeToSelect]);
+                }
+            }
+            catch (e) {
+                console.warn('focus-component failed:', e);
             }
             break;
-        case 'collect-components':
+        }
+        case 'collect-components': {
             // 收集组件
             try {
-                await collectAndOrganizeComponents(msg.targetPageName, msg.scope, msg.externalOnly);
+                const summary = await collectAndOrganizeComponents(msg.targetPageName, msg.scope, msg.externalOnly, msg.moveInternal === true, msg.externalSeparatePage === true);
+                const detailLines = [
+                    `组件 ${summary.totalComponents}（变体集 ${summary.componentSetCount} / 单组件 ${summary.singleComponentCount}）`,
+                    `实例重绑 成功 ${summary.instancesRebound} / 失败 ${summary.instancesFailed}`,
+                    `内部组件 移动 ${summary.internalMoved} / 克隆 ${summary.internalCloned}`,
+                    `外部分组页面新增 ${summary.externalPagesCreated}`
+                ];
                 figma.ui.postMessage({
                     type: 'success',
-                    message: `已收集到页面「${msg.targetPageName}」`
+                    message: `已收集到页面「${msg.targetPageName}」`,
+                    details: detailLines.join('\n')
                 });
             }
             catch (err) {
@@ -251,6 +171,7 @@ figma.ui.onmessage = async (msg) => {
                 figma.ui.postMessage({ type: 'error', message });
             }
             break;
+        }
     }
     perfMonitor.endMeasurement('message-processing');
     // 定期输出性能报告（每10%的概率）
@@ -275,8 +196,6 @@ async function scanFileForComponents(scope) {
             console.log('Processing selected nodes');
             const totalNodes = selection.length;
             let processedNodes = 0;
-            const baseConcurrencyLimit = 8;
-            const adaptiveConcurrencyLimit = Math.min(baseConcurrencyLimit, Math.max(4, Math.floor(totalNodes / 100)));
             const maxNodesToProcess = 3000;
             const nodesToProcess = totalNodes > maxNodesToProcess ? selection.slice(0, maxNodesToProcess) : selection;
             const actualTotalNodes = nodesToProcess.length;
@@ -469,23 +388,22 @@ function buildScanResults(componentsMap, scope) {
                 }
                 current = current.parent;
             }
+            const firstInstanceId = info.instances.length > 0 ? info.instances[0].id : null;
             componentsList.push({
                 id: key,
                 name: targetNode.name,
                 instanceCount: info.instanceCount,
                 isExternal: !isInCurrentDocument,
-                sourceFileKey: '',
+                sourceFileKey: info.sourceFileKey || '',
                 sourceNodeId: targetNode.id,
+                firstInstanceId,
+                pageName: findPageName(targetNode),
                 type: info.componentSet ? 'component-set' : 'component'
             });
             if (info.componentSet) {
                 componentSetCount++;
             }
         });
-        if (i > 0 && i % (batchSize * 2) === 0) {
-            // 使用setTimeout让出控制权
-            setTimeout(() => { }, 0);
-        }
     }
     return {
         totalComponents: componentsMap.size,
@@ -495,75 +413,98 @@ function buildScanResults(componentsMap, scope) {
         scope: scope
     };
 }
+function trackInstanceForMap(instanceMap, key, instance, maxInstancesPerComponent = 200) {
+    const existingInstances = instanceMap.get(key);
+    if (existingInstances) {
+        if (existingInstances.length <= maxInstancesPerComponent) {
+            existingInstances.push(instance);
+            if (existingInstances.length === maxInstancesPerComponent + 1) {
+                console.log(`组件 ${key} 的实例数量已达上限 (${maxInstancesPerComponent})`);
+            }
+        }
+    }
+    else {
+        instanceMap.set(key, [instance]);
+    }
+}
 // 递归扫描节点以查找主组件、变体组件集和组件实例
-async function scanNode(node, componentsMap, scannedNodes = new Set()) {
+async function scanNode(node, componentsMap, options = {}) {
+    var _a, _b, _c;
+    const scannedNodes = (_a = options.scannedNodes) !== null && _a !== void 0 ? _a : new Set();
+    const shouldCollectComponents = options.collectComponents !== false;
     if (scannedNodes.has(node.id)) {
         return;
     }
     scannedNodes.add(node.id);
-    // 直接识别 ComponentSet（变体组件集）
-    if (node.type === 'COMPONENT_SET') {
+    if (shouldCollectComponents && node.type === 'COMPONENT_SET') {
         const componentSet = node;
         const targetKey = componentSet.id;
         if (!componentsMap.has(targetKey)) {
-            // 取默认变体作为代表 component
-            const defaultVariant = componentSet.defaultVariant;
             componentsMap.set(targetKey, {
-                component: defaultVariant,
+                component: componentSet.defaultVariant,
                 instanceCount: 0,
                 instances: [],
-                componentSet: componentSet
+                componentSet
             });
         }
-        // 不 return，继续递归子节点以统计实例
     }
-    // 直接识别独立的 Component（不在 ComponentSet 内的主组件）
-    if (node.type === 'COMPONENT') {
+    if (shouldCollectComponents && node.type === 'COMPONENT') {
         const component = node;
         if (!component.parent || component.parent.type !== 'COMPONENT_SET') {
             const targetKey = component.id;
             if (!componentsMap.has(targetKey)) {
                 componentsMap.set(targetKey, {
-                    component: component,
+                    component,
                     instanceCount: 0,
                     instances: [],
                     componentSet: undefined
                 });
             }
         }
-        // 不 return，继续递归子节点以统计实例
     }
-    // 识别实例，统计引用数量
     if (node.type === 'INSTANCE') {
         const instance = node;
-        const mainComponent = instance.mainComponent;
+        const mainComponent = await instance.getMainComponentAsync();
         if (mainComponent) {
-            let targetKey;
-            let targetComponent;
-            let componentSet;
-            if (mainComponent.parent && mainComponent.parent.type === 'COMPONENT_SET') {
-                componentSet = mainComponent.parent;
-                targetKey = componentSet.id;
-                targetComponent = mainComponent;
+            const sourceFileKey = parseSourceFileKey(mainComponent.key);
+            const targetNodeForSource = ((_b = mainComponent.parent) === null || _b === void 0 ? void 0 : _b.type) === 'COMPONENT_SET'
+                ? mainComponent.parent
+                : mainComponent;
+            const isInternalSource = isNodeInCurrentDocument(targetNodeForSource);
+            const externalLibraryName = !isInternalSource
+                ? inferExternalLibraryName(targetNodeForSource)
+                : undefined;
+            const componentSet = ((_c = mainComponent.parent) === null || _c === void 0 ? void 0 : _c.type) === 'COMPONENT_SET'
+                ? mainComponent.parent
+                : undefined;
+            const key = componentSet ? componentSet.id : mainComponent.id;
+            if (options.instanceMap) {
+                trackInstanceForMap(options.instanceMap, key, instance);
             }
-            else {
-                targetKey = mainComponent.id;
-                targetComponent = mainComponent;
-            }
-            if (componentsMap.has(targetKey)) {
-                const info = componentsMap.get(targetKey);
-                info.instanceCount++;
-                if (info.instances.length < 100) {
-                    info.instances.push(instance);
+            if (shouldCollectComponents) {
+                const existingInfo = componentsMap.get(key);
+                if (existingInfo) {
+                    existingInfo.instanceCount++;
+                    if (!existingInfo.sourceFileKey && sourceFileKey) {
+                        existingInfo.sourceFileKey = sourceFileKey;
+                    }
+                    if (!existingInfo.externalLibraryName && externalLibraryName) {
+                        existingInfo.externalLibraryName = externalLibraryName;
+                    }
+                    if (existingInfo.instances.length < 100) {
+                        existingInfo.instances.push(instance);
+                    }
                 }
-            }
-            else {
-                componentsMap.set(targetKey, {
-                    component: targetComponent,
-                    instanceCount: 1,
-                    instances: [instance],
-                    componentSet: componentSet
-                });
+                else {
+                    componentsMap.set(key, {
+                        component: mainComponent,
+                        instanceCount: 1,
+                        instances: [instance],
+                        sourceFileKey,
+                        externalLibraryName,
+                        componentSet
+                    });
+                }
             }
         }
     }
@@ -576,7 +517,7 @@ async function scanNode(node, componentsMap, scannedNodes = new Set()) {
             const batchSize = 50;
             while (nodeQueue.length > 0) {
                 const batch = nodeQueue.splice(0, Math.min(batchSize, nodeQueue.length));
-                await Promise.all(batch.map(childNode => scanNode(childNode, componentsMap, scannedNodes)));
+                await Promise.all(batch.map(childNode => scanNode(childNode, componentsMap, Object.assign(Object.assign({}, options), { scannedNodes }))));
                 processedCount += batch.length;
                 if (processedCount % 1000 === 0 && totalChildren > 5000) {
                     try {
@@ -597,142 +538,15 @@ async function scanNode(node, componentsMap, scannedNodes = new Set()) {
             const batchSize = Math.min(50, Math.ceil(totalChildren / 10));
             for (let i = 0; i < totalChildren; i += batchSize) {
                 const batch = children.slice(i, Math.min(i + batchSize, totalChildren));
-                await Promise.all(batch.map(child => scanNode(child, componentsMap, scannedNodes)));
+                await Promise.all(batch.map(child => scanNode(child, componentsMap, Object.assign(Object.assign({}, options), { scannedNodes }))));
                 if (i > 0 && i % (batchSize * 3) === 0) {
-                    // 使用setTimeout让出控制权
-                    setTimeout(() => { }, 0);
+                    await new Promise(resolve => setTimeout(resolve, 0));
                 }
             }
         }
         else {
             for (let i = 0; i < totalChildren; i++) {
-                await scanNode(children[i], componentsMap, scannedNodes);
-            }
-        }
-    }
-}
-// 性能优化10：优化文档实例映射构建 - 使用性能监控包装
-const buildDocumentInstanceMap = withPerformanceMonitoring(async () => {
-    const instanceMap = new Map();
-    // 性能优化11：预估处理时间和资源
-    const pages = figma.root.children;
-    const totalPageCount = pages.length;
-    let processedPages = 0;
-    // 性能优化12：动态调整并发限制
-    const adaptiveConcurrencyLimit = Math.min(6, Math.max(3, Math.floor(totalPageCount / 2)));
-    const startTime = Date.now();
-    for (let i = 0; i < pages.length; i += adaptiveConcurrencyLimit) {
-        const batch = pages.slice(i, i + adaptiveConcurrencyLimit);
-        const promises = batch.map(page => buildInstanceMapFromNode(page, instanceMap));
-        await Promise.all(promises);
-        processedPages += batch.length;
-        // 性能优化13：智能进度更新
-        const shouldUpdateProgress = processedPages % Math.max(2, Math.floor(totalPageCount / 5)) === 0 ||
-            processedPages === totalPageCount;
-        if (shouldUpdateProgress) {
-            try {
-                const elapsedTime = Date.now() - startTime;
-                const estimatedTotalTime = (elapsedTime / processedPages) * totalPageCount;
-                const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
-                figma.ui.postMessage({
-                    type: 'progress',
-                    message: `构建实例映射: ${Math.round((processedPages / totalPageCount) * 100)}%，预计剩余: ${remainingTime}秒`,
-                    progress: Math.min(29, 10 + Math.round((processedPages / totalPageCount) * 20))
-                });
-            }
-            catch (error) {
-                console.log('Failed to send progress message, plugin might be closing');
-                return instanceMap;
-            }
-        }
-        // 性能优化14：阶段性释放控制权
-        if (i > 0 && i % (adaptiveConcurrencyLimit * 2) === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1)); // 微小延迟让出控制权
-        }
-        // 性能优化15：内存保护检查
-        if (instanceMap.size > 20000) {
-            figma.notify('检测到大量实例，已启用内存保护模式', { timeout: 3000 });
-            break;
-        }
-    }
-    console.log(`实例映射构建完成，共处理 ${instanceMap.size} 个唯一组件`);
-    return instanceMap;
-}, 'build-document-instance-map');
-// 递归构建实例映射
-async function buildInstanceMapFromNode(node, instanceMap, scannedNodes = new Set()) {
-    var _a;
-    if (scannedNodes.has(node.id)) {
-        return;
-    }
-    scannedNodes.add(node.id);
-    if (node.type === 'INSTANCE') {
-        const instance = node;
-        const mainComponent = instance.mainComponent;
-        if (!mainComponent)
-            return;
-        // 变体组件用 ComponentSet id 作为 key，与 processComponentSet 查找一致
-        const key = ((_a = mainComponent.parent) === null || _a === void 0 ? void 0 : _a.type) === 'COMPONENT_SET'
-            ? mainComponent.parent.id
-            : mainComponent.id;
-        const existingInstances = instanceMap.get(key);
-        const maxInstancesPerComponent = 200;
-        if (existingInstances) {
-            if (existingInstances.length < maxInstancesPerComponent) {
-                existingInstances.push(instance);
-            }
-            else if (existingInstances.length === maxInstancesPerComponent) {
-                existingInstances.push(instance);
-                console.log(`组件 ${key} 的实例数量已达上限 (${maxInstancesPerComponent})`);
-            }
-        }
-        else {
-            instanceMap.set(key, [instance]);
-        }
-    }
-    if ('children' in node) {
-        const children = node.children;
-        const totalChildren = children.length;
-        if (totalChildren > 3000) {
-            const nodeQueue = [...children];
-            let processedCount = 0;
-            const adaptiveBatchSize = Math.min(30, Math.max(10, Math.floor(totalChildren / 100)));
-            while (nodeQueue.length > 0 && instanceMap.size < 10000) {
-                const batch = nodeQueue.splice(0, Math.min(adaptiveBatchSize, nodeQueue.length));
-                await Promise.all(batch.map(childNode => buildInstanceMapFromNode(childNode, instanceMap, scannedNodes)));
-                processedCount += batch.length;
-                if (processedCount % 800 === 0) {
-                    try {
-                        figma.ui.postMessage({
-                            type: 'progress',
-                            message: `构建实例映射: ${Math.round((processedCount / totalChildren) * 100)}%`,
-                            progress: Math.min(29, 10 + Math.round((processedCount / totalChildren) * 20))
-                        });
-                    }
-                    catch (error) {
-                        console.log('Failed to send progress message, plugin might be closing');
-                        return;
-                    }
-                    if (instanceMap.size > 15000) {
-                        console.warn('实例映射过大，提前终止以保护内存');
-                        break;
-                    }
-                }
-            }
-        }
-        else if (totalChildren > 200) {
-            const batchSize = Math.min(30, Math.ceil(totalChildren / 8));
-            for (let i = 0; i < totalChildren; i += batchSize) {
-                const batch = children.slice(i, Math.min(i + batchSize, totalChildren));
-                await Promise.all(batch.map(child => buildInstanceMapFromNode(child, instanceMap, scannedNodes)));
-                if (i > 0 && i % (batchSize * 2) === 0) {
-                    // 使用setTimeout让出控制权
-                    setTimeout(() => { }, 0);
-                }
-            }
-        }
-        else {
-            for (let i = 0; i < totalChildren; i++) {
-                await buildInstanceMapFromNode(children[i], instanceMap, scannedNodes);
+                await scanNode(children[i], componentsMap, Object.assign(Object.assign({}, options), { scannedNodes }));
             }
         }
     }
@@ -749,36 +563,89 @@ function isComponentInternal(info) {
     }
     return false;
 }
+function findPageName(node) {
+    let current = node;
+    while (current) {
+        if (current.type === 'PAGE') {
+            return current.name;
+        }
+        current = current.parent;
+    }
+    return '未知页面';
+}
+function shouldKeepPlaceholderInParent(parent) {
+    return parent.type === 'FRAME' || parent.type === 'GROUP';
+}
+function isNodeInCurrentDocument(node) {
+    let current = node;
+    while (current) {
+        if (current === figma.root) {
+            return true;
+        }
+        current = current.parent;
+    }
+    return false;
+}
+function parseSourceFileKey(componentKey) {
+    if (!componentKey) {
+        return undefined;
+    }
+    const [fileKey] = componentKey.split(':');
+    return fileKey || undefined;
+}
+function inferExternalLibraryName(node) {
+    // 1) 尝试从父链拿到远程页面名（若 API 可访问）
+    let current = node;
+    while (current) {
+        if (current.type === 'PAGE') {
+            return current.name;
+        }
+        current = current.parent;
+    }
+    // 2) 回退：组件命名常见的“库名/分类/组件名”约定
+    if ('name' in node && typeof node.name === 'string') {
+        const segments = node.name.split('/').map(s => s.trim()).filter(Boolean);
+        if (segments.length > 1) {
+            return segments[0];
+        }
+    }
+    return undefined;
+}
+function getExternalLibraryPageName(info) {
+    return info.externalLibraryName || '外部组件库';
+}
 // 收集并组织主组件到目标页面
-async function collectAndOrganizeComponents(targetPageName, scope, externalOnly = false) {
+async function collectAndOrganizeComponents(targetPageName, scope, externalOnly = false, moveInternal = false, externalSeparatePage = false) {
     const componentsMap = new Map();
     const startTime = Date.now();
     try {
         figma.ui.postMessage({
             type: 'progress',
-            message: '正在扫描组件...',
+            message: '[1/4] 扫描组件...',
             progress: 0
         });
     }
     catch (error) {
         console.log('Failed to send progress message, plugin might be closing');
-        return;
+        throw new Error('插件正在关闭');
     }
-    await performComponentScanning(scope, componentsMap, startTime);
+    const instanceMap = await performComponentScanning(scope, componentsMap, startTime);
     if (componentsMap.size === 0) {
         throw new Error('未找到任何组件实例');
     }
     if (externalOnly) {
         await filterExternalComponents(componentsMap);
     }
-    await sendProgressMessage('正在扫描文档中的所有实例...', 15);
-    const instanceMap = await buildDocumentInstanceMap();
-    await sendProgressMessage('正在创建组件库页面...', 35);
+    await sendProgressMessage('[3/4] 创建组件库页面...', 35);
     const targetPage = await getOrCreateTargetPage(targetPageName);
-    figma.currentPage = targetPage;
-    await processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime);
+    await figma.setCurrentPageAsync(targetPage);
+    const summary = await processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime, moveInternal, externalSeparatePage);
+    await sendProgressMessage('[4/4] 完成', 100);
+    return summary;
 }
 async function performComponentScanning(scope, componentsMap, startTime) {
+    const instanceMap = new Map();
+    const scannedNodes = new Set();
     if (scope === 'selection') {
         const selection = figma.currentPage.selection;
         if (selection.length === 0) {
@@ -792,14 +659,18 @@ async function performComponentScanning(scope, componentsMap, startTime) {
         let processedNodes = 0;
         for (let i = 0; i < nodesToProcess.length; i += adaptiveBatchSize) {
             const batch = nodesToProcess.slice(i, i + adaptiveBatchSize);
-            await Promise.all(batch.map(node => scanNode(node, componentsMap)));
+            await Promise.all(batch.map(node => scanNode(node, componentsMap, {
+                scannedNodes,
+                instanceMap,
+                collectComponents: true
+            })));
             processedNodes += batch.length;
             if (processedNodes % Math.max(25, Math.floor(actualTotalNodes / 10)) === 0) {
-                const progress = Math.floor((processedNodes / actualTotalNodes) * 10);
+                const progress = Math.floor((processedNodes / actualTotalNodes) * 20);
                 const elapsedTime = Date.now() - startTime;
                 const estimatedTotalTime = (elapsedTime / processedNodes) * actualTotalNodes;
                 const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
-                await sendProgressMessage(`扫描选择项 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` +
+                await sendProgressMessage(`[1/4] 扫描选择项 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` +
                     (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''), progress);
             }
             if (i % (adaptiveBatchSize * 3) === 0) {
@@ -809,10 +680,25 @@ async function performComponentScanning(scope, componentsMap, startTime) {
         if (totalNodes > maxNodesToProcess) {
             figma.notify(`注意：选择的节点过多，仅处理了前${maxNodesToProcess}个节点。`, { timeout: 5000 });
         }
+        // 对未扫描区域补全实例映射，避免漏掉其他页面上的实例重绑
+        await sendProgressMessage('[2/4] 补充扫描文档实例映射...', 15);
+        const pages = [...figma.root.children];
+        for (const page of pages) {
+            await scanNode(page, componentsMap, { scannedNodes, instanceMap, collectComponents: false });
+        }
     }
     else if (scope === 'page') {
-        await scanNode(figma.currentPage, componentsMap);
-        await sendProgressMessage('扫描当前页面完成', 90);
+        await scanNode(figma.currentPage, componentsMap, {
+            scannedNodes,
+            instanceMap,
+            collectComponents: true
+        });
+        await sendProgressMessage('[2/4] 补充扫描文档实例映射...', 15);
+        const pages = [...figma.root.children];
+        for (const page of pages) {
+            await scanNode(page, componentsMap, { scannedNodes, instanceMap, collectComponents: false });
+        }
+        await sendProgressMessage('[1/4] 扫描当前页面完成', 30);
     }
     else {
         const totalPageCount = figma.root.children.length;
@@ -821,14 +707,19 @@ async function performComponentScanning(scope, componentsMap, startTime) {
         const pages = [...figma.root.children];
         for (let i = 0; i < pages.length; i += adaptiveConcurrencyLimit) {
             const batch = pages.slice(i, i + adaptiveConcurrencyLimit);
-            await Promise.all(batch.map(page => scanNode(page, componentsMap)));
+            await Promise.all(batch.map(page => scanNode(page, componentsMap, {
+                scannedNodes,
+                instanceMap,
+                collectComponents: true
+            })));
             processedPages += batch.length;
-            await sendProgressMessage(`扫描页面 ${processedPages}/${totalPageCount}: ${batch.map(p => p.name).join(', ')}`, Math.floor((processedPages / totalPageCount) * 100));
+            await sendProgressMessage(`[1/4] 扫描页面 ${processedPages}/${totalPageCount}: ${batch.map(p => p.name).join(', ')}`, Math.floor((processedPages / totalPageCount) * 30));
             if (i % (adaptiveConcurrencyLimit * 2) === 0) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
     }
+    return instanceMap;
 }
 async function filterExternalComponents(componentsMap) {
     const externalComponents = new Map();
@@ -837,21 +728,7 @@ async function filterExternalComponents(componentsMap) {
     for (let i = 0; i < componentArray.length; i += batchSize) {
         const batch = componentArray.slice(i, i + batchSize);
         batch.forEach(([key, info]) => {
-            const targetNode = info.componentSet || info.component;
-            const firstInstance = info.instances[0];
-            let isExternal = false;
-            if (firstInstance && firstInstance.mainComponent) {
-                const mainComp = firstInstance.mainComponent;
-                const componentKey = mainComp.key;
-                if (componentKey && componentKey.includes(':')) {
-                    isExternal = true;
-                }
-                else {
-                    const isInCurrentDocument = figma.root.children.some(page => page.findOne(node => node.id === targetNode.id) !== null);
-                    isExternal = !isInCurrentDocument;
-                }
-            }
-            if (isExternal) {
+            if (!isComponentInternal(info)) {
                 externalComponents.set(key, info);
             }
         });
@@ -883,84 +760,133 @@ async function sendProgressMessage(message, progress) {
         console.log('Failed to send progress message, plugin might be closing');
     }
 }
-async function processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime) {
-    let xOffset = 0;
-    let yOffset = 0;
+async function processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime, moveInternal, externalSeparatePage) {
     const spacing = 100;
     const maxWidth = 4000;
-    let maxHeightInRow = 0;
+    const layoutState = new Map();
+    const externalPageCache = new Map();
     const processedComponents = [];
     let componentSetCount = 0;
     let singleComponentCount = 0;
-    let totalInstancesRebound = 0;
+    let instancesAttempted = 0;
+    let instancesRebound = 0;
+    let instancesFailed = 0;
+    let internalMoved = 0;
+    let internalCloned = 0;
+    let fallbackToClone = 0;
     const totalComponents = componentsMap.size;
     let processedCount = 0;
     const componentArray = Array.from(componentsMap.entries());
     const adaptiveBatchSize = Math.min(30, Math.max(10, Math.floor(totalComponents / 10)));
     for (let i = 0; i < componentArray.length; i += adaptiveBatchSize) {
         const batch = componentArray.slice(i, i + adaptiveBatchSize);
-        const nodesOnTargetPage = await Promise.all(batch.map(async ([key, info]) => {
+        const nodesOnTargetPage = await Promise.all(batch.map(async ([, info]) => {
             processedCount++;
             const isInternal = isComponentInternal(info);
+            let pageForComponent = targetPage;
+            if (externalSeparatePage && !isInternal) {
+                const externalPageName = getExternalLibraryPageName(info);
+                const cachedPage = externalPageCache.get(externalPageName);
+                if (cachedPage) {
+                    pageForComponent = cachedPage;
+                }
+                else {
+                    const externalPage = await getOrCreateTargetPage(externalPageName);
+                    externalPageCache.set(externalPageName, externalPage);
+                    pageForComponent = externalPage;
+                }
+            }
             if (info.componentSet) {
                 componentSetCount++;
-                return processComponentSet(info, targetPage, instanceMap, processedComponents, isInternal);
+                return processComponentSet(info, pageForComponent, instanceMap, processedComponents, isInternal, moveInternal);
             }
             else {
                 singleComponentCount++;
-                return processSingleComponent(info, targetPage, instanceMap, processedComponents, isInternal);
+                return processSingleComponent(info, pageForComponent, instanceMap, processedComponents, isInternal, moveInternal);
             }
         }));
         for (let j = 0; j < batch.length; j++) {
-            const [key, info] = batch[j];
-            const nodeOnTargetPage = nodesOnTargetPage[j];
-            if (!nodeOnTargetPage)
+            const outcome = nodesOnTargetPage[j];
+            if (!outcome || !outcome.node)
                 continue;
+            const nodeOnTargetPage = outcome.node;
+            instancesAttempted += outcome.instancesAttempted;
+            instancesRebound += outcome.instancesRebound;
+            instancesFailed += outcome.instancesFailed;
+            if (outcome.movedInternal)
+                internalMoved++;
+            if (outcome.cloned)
+                internalCloned++;
+            if (outcome.fallbackToClone)
+                fallbackToClone++;
+            const page = nodeOnTargetPage.parent;
+            if (!page || page.type !== 'PAGE') {
+                continue;
+            }
+            const state = layoutState.get(page.id) || { xOffset: 0, yOffset: 0, maxHeightInRow: 0 };
             const nodeWidth = nodeOnTargetPage.width + spacing;
             const nodeHeight = nodeOnTargetPage.height + spacing;
-            maxHeightInRow = Math.max(maxHeightInRow, nodeHeight);
-            if (xOffset + nodeWidth > maxWidth) {
-                xOffset = 0;
-                yOffset += maxHeightInRow;
-                maxHeightInRow = nodeHeight;
+            state.maxHeightInRow = Math.max(state.maxHeightInRow, nodeHeight);
+            if (state.xOffset + nodeWidth > maxWidth) {
+                state.xOffset = 0;
+                state.yOffset += state.maxHeightInRow;
+                state.maxHeightInRow = nodeHeight;
             }
             try {
-                nodeOnTargetPage.x = xOffset;
-                nodeOnTargetPage.y = yOffset;
+                nodeOnTargetPage.x = state.xOffset;
+                nodeOnTargetPage.y = state.yOffset;
             }
             catch (e) {
                 if (e instanceof Error)
                     console.warn(`无法设置节点位置: ${nodeOnTargetPage.name} - ${e.message}`);
             }
-            xOffset += nodeWidth;
-            const instances = instanceMap.get(key) || [];
-            totalInstancesRebound += instances.length;
+            state.xOffset += nodeWidth;
+            layoutState.set(page.id, state);
         }
         const overallProgress = 35 + Math.floor((processedCount / totalComponents) * 55);
         const elapsedTime = Date.now() - startTime;
         const estimatedTotalTime = (elapsedTime / processedCount) * totalComponents;
         const remainingTime = Math.max(0, Math.round((estimatedTotalTime - elapsedTime) / 1000));
-        await sendProgressMessage(`正在处理组件 ${processedCount}/${totalComponents}，预计剩余时间: ${remainingTime}秒`, overallProgress);
+        await sendProgressMessage(`[4/4] 正在处理组件 ${processedCount}/${totalComponents}，预计剩余时间: ${remainingTime}秒`, overallProgress);
         if (i > 0 && i % (adaptiveBatchSize * 2) === 0) {
             await new Promise(resolve => setTimeout(resolve, 1));
         }
     }
     if (processedComponents.length > 0) {
-        figma.currentPage.selection = processedComponents;
+        figma.currentPage.selection = processedComponents.filter(node => { var _a; return ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.id) === targetPage.id; });
     }
     console.log(`处理完成: ${componentSetCount} 个变体组件集, ${singleComponentCount} 个单组件`);
-    console.log(`实例重新绑定数量: ${totalInstancesRebound}`);
+    console.log(`实例重绑: 成功 ${instancesRebound}, 失败 ${instancesFailed}`);
+    return {
+        totalComponents,
+        componentSetCount,
+        singleComponentCount,
+        instancesAttempted,
+        instancesRebound,
+        instancesFailed,
+        internalMoved,
+        internalCloned,
+        fallbackToClone,
+        externalPagesCreated: externalPageCache.size
+    };
 }
-async function processComponentSet(info, targetPage, instanceMap, processedComponents, isInternal) {
+async function processComponentSet(info, targetPage, instanceMap, processedComponents, isInternal, moveInternal) {
+    let instancesAttempted = 0;
+    let instancesRebound = 0;
+    let instancesFailed = 0;
+    let movedInternal = false;
+    let cloned = false;
+    let fallbackToClone = false;
     const componentSet = info.componentSet;
     let existingSet = targetPage.findOne(n => n.id === componentSet.id);
-    if (isInternal) {
+    if (isInternal && moveInternal) {
         // 本文件变体集：移动到目标页，在原位置保留各变体的实例
         const originalParent = componentSet.parent;
         const originalX = componentSet.x;
         const originalY = componentSet.y;
-        if (!originalParent)
-            return null;
+        if (!originalParent) {
+            return { node: null, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
+        }
         // 移动前，记录所有变体及其在 ComponentSet 内的相对位置
         const variantInfos = [];
         for (const child of componentSet.children) {
@@ -977,6 +903,7 @@ async function processComponentSet(info, targetPage, instanceMap, processedCompo
                 targetPage.appendChild(componentSet); // 移动
                 processedComponents.push(componentSet);
                 existingSet = componentSet;
+                movedInternal = true;
             }
             catch (e) {
                 // 移动失败（可能是只读节点），回退到克隆
@@ -985,20 +912,33 @@ async function processComponentSet(info, targetPage, instanceMap, processedCompo
                 targetPage.appendChild(clonedSet);
                 processedComponents.push(clonedSet);
                 existingSet = clonedSet;
+                cloned = true;
+                fallbackToClone = true;
                 const instances = instanceMap.get(componentSet.id) || [];
+                instancesAttempted += instances.length;
                 await Promise.all(instances.map(async (instance) => {
                     try {
-                        const newVariant = existingSet.findOne(n => { var _a; return n.type === 'COMPONENT' && n.name === ((_a = instance.mainComponent) === null || _a === void 0 ? void 0 : _a.name); });
-                        if (newVariant)
+                        const mainComponent = await instance.getMainComponentAsync();
+                        const newVariant = existingSet.findOne(n => n.type === 'COMPONENT' && n.name === (mainComponent === null || mainComponent === void 0 ? void 0 : mainComponent.name));
+                        if (newVariant) {
                             instance.swapComponent(newVariant);
+                            instancesRebound++;
+                        }
+                        else {
+                            instancesFailed++;
+                        }
                     }
-                    catch (_) { /* ignore */ }
+                    catch (_) {
+                        instancesFailed++;
+                    }
                 }));
-                return existingSet;
+                return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
             }
         }
         // 在原位置创建一个 Frame，放入各变体的实例
-        if (originalParent !== targetPage && variantInfos.length > 0) {
+        if (originalParent !== targetPage &&
+            variantInfos.length > 0 &&
+            shouldKeepPlaceholderInParent(originalParent)) {
             try {
                 const holder = figma.createFrame();
                 holder.name = componentSet.name + ' (instances)';
@@ -1025,7 +965,7 @@ async function processComponentSet(info, targetPage, instanceMap, processedCompo
                     console.warn(`在原位创建变体实例集失败: ${componentSet.name} - ${e.message}`);
             }
         }
-        return existingSet;
+        return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
     }
     // 外部组件集：克隆到目标页，所有实例 rebind 到克隆
     if (!existingSet) {
@@ -1033,36 +973,57 @@ async function processComponentSet(info, targetPage, instanceMap, processedCompo
         targetPage.appendChild(clonedSet);
         processedComponents.push(clonedSet);
         existingSet = clonedSet;
+        cloned = true;
+    }
+    // 内部组件在默认克隆模式下不重绑，避免破坏原引用
+    if (isInternal && !moveInternal) {
+        return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
     }
     const instances = instanceMap.get(componentSet.id) || [];
+    instancesAttempted += instances.length;
     await Promise.all(instances.map(async (instance) => {
         try {
-            const newVariant = existingSet.findOne(n => { var _a; return n.type === 'COMPONENT' && n.name === ((_a = instance.mainComponent) === null || _a === void 0 ? void 0 : _a.name); });
-            if (newVariant)
+            const mainComponent = await instance.getMainComponentAsync();
+            const newVariant = existingSet.findOne(n => n.type === 'COMPONENT' && n.name === (mainComponent === null || mainComponent === void 0 ? void 0 : mainComponent.name));
+            if (newVariant) {
                 instance.swapComponent(newVariant);
+                instancesRebound++;
+            }
+            else {
+                instancesFailed++;
+            }
         }
         catch (e) {
+            instancesFailed++;
             if (e instanceof Error)
                 console.log(`无法重新绑定实例: ${e.message}`);
         }
     }));
-    return existingSet;
+    return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
 }
-async function processSingleComponent(info, targetPage, instanceMap, processedComponents, isInternal) {
+async function processSingleComponent(info, targetPage, instanceMap, processedComponents, isInternal, moveInternal) {
+    let instancesAttempted = 0;
+    let instancesRebound = 0;
+    let instancesFailed = 0;
+    let movedInternal = false;
+    let cloned = false;
+    let fallbackToClone = false;
     const component = info.component;
     let existingComponent = targetPage.findOne(n => n.id === component.id);
-    if (isInternal) {
+    if (isInternal && moveInternal) {
         // 本文件组件：移动到目标页，在原位置保留一个实例
         const originalParent = component.parent;
         const originalX = component.x;
         const originalY = component.y;
-        if (!originalParent)
-            return null;
+        if (!originalParent) {
+            return { node: null, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
+        }
         if (!existingComponent) {
             try {
                 targetPage.appendChild(component); // 移动
                 processedComponents.push(component);
                 existingComponent = component;
+                movedInternal = true;
             }
             catch (e) {
                 // 移动失败（可能是只读节点），回退到克隆
@@ -1071,18 +1032,24 @@ async function processSingleComponent(info, targetPage, instanceMap, processedCo
                 targetPage.appendChild(clonedComponent);
                 processedComponents.push(clonedComponent);
                 existingComponent = clonedComponent;
+                cloned = true;
+                fallbackToClone = true;
                 // 回退到克隆时需要 swap 实例
                 const instances = instanceMap.get(component.id) || [];
+                instancesAttempted += instances.length;
                 await Promise.all(instances.map(async (instance) => {
                     try {
                         instance.swapComponent(existingComponent);
+                        instancesRebound++;
                     }
-                    catch (_) { /* ignore */ }
+                    catch (_) {
+                        instancesFailed++;
+                    }
                 }));
-                return existingComponent;
+                return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
             }
         }
-        if (originalParent !== targetPage) {
+        if (originalParent !== targetPage && shouldKeepPlaceholderInParent(originalParent)) {
             try {
                 const placeholderInstance = component.createInstance();
                 originalParent.appendChild(placeholderInstance);
@@ -1094,24 +1061,32 @@ async function processSingleComponent(info, targetPage, instanceMap, processedCo
                     console.warn(`在原位创建实例失败: ${component.name} - ${e.message}`);
             }
         }
-        return existingComponent;
+        return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
     }
-    // 外部组件：克隆到目标页，所有实例 rebind 到克隆
+    // 默认模式或外部组件：克隆到目标页
     if (!existingComponent) {
         const clonedComponent = component.clone();
         targetPage.appendChild(clonedComponent);
         processedComponents.push(clonedComponent);
         existingComponent = clonedComponent;
+        cloned = true;
+    }
+    // 内部组件在默认克隆模式下不重绑，避免破坏原引用
+    if (isInternal && !moveInternal) {
+        return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
     }
     const instances = instanceMap.get(component.id) || [];
+    instancesAttempted += instances.length;
     await Promise.all(instances.map(async (instance) => {
         try {
             instance.swapComponent(existingComponent);
+            instancesRebound++;
         }
         catch (e) {
+            instancesFailed++;
             if (e instanceof Error)
                 console.log(`无法重新绑定实例: ${e.message}`);
         }
     }));
-    return existingComponent;
+    return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone };
 }
