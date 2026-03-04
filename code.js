@@ -1249,10 +1249,10 @@ async function sendProgressMessage(message, progress) {
     }
 }
 async function processAndArrangeComponents(componentsMap, instanceMap, targetPage, startTime, moveInternal, externalSeparatePage) {
-    const spacing = 100;
-    const maxWidth = 4000;
-    const layoutState = new Map();
+    const spacing = 200;
+    const externalComponentsPageName = '📦 外部组件';
     const externalPageCache = new Map();
+    const layoutGroupsByPage = new Map();
     const processedComponents = [];
     let componentSetCount = 0;
     let singleComponentCount = 0;
@@ -1275,7 +1275,7 @@ async function processAndArrangeComponents(componentsMap, instanceMap, targetPag
             const isInternal = isComponentInternal(info);
             let pageForComponent = targetPage;
             if (externalSeparatePage && !isInternal) {
-                const externalPageName = getExternalLibraryPageName(info);
+                const externalPageName = externalComponentsPageName;
                 const cachedPage = externalPageCache.get(externalPageName);
                 if (cachedPage) {
                     pageForComponent = cachedPage;
@@ -1315,25 +1315,15 @@ async function processAndArrangeComponents(componentsMap, instanceMap, targetPag
             if (!page || page.type !== 'PAGE') {
                 continue;
             }
-            const state = layoutState.get(page.id) || { xOffset: 0, yOffset: 0, maxHeightInRow: 0 };
-            const nodeWidth = nodeOnTargetPage.width + spacing;
-            const nodeHeight = nodeOnTargetPage.height + spacing;
-            state.maxHeightInRow = Math.max(state.maxHeightInRow, nodeHeight);
-            if (state.xOffset + nodeWidth > maxWidth) {
-                state.xOffset = 0;
-                state.yOffset += state.maxHeightInRow;
-                state.maxHeightInRow = nodeHeight;
+            let pageLayout = layoutGroupsByPage.get(page.id);
+            if (!pageLayout) {
+                pageLayout = { page, columns: new Map() };
+                layoutGroupsByPage.set(page.id, pageLayout);
             }
-            try {
-                nodeOnTargetPage.x = state.xOffset;
-                nodeOnTargetPage.y = state.yOffset;
-            }
-            catch (e) {
-                if (e instanceof Error)
-                    console.warn(`无法设置节点位置: ${nodeOnTargetPage.name} - ${e.message}`);
-            }
-            state.xOffset += nodeWidth;
-            layoutState.set(page.id, state);
+            const widthGroupKey = Math.round(nodeOnTargetPage.width);
+            const columnNodes = pageLayout.columns.get(widthGroupKey) || [];
+            columnNodes.push(nodeOnTargetPage);
+            pageLayout.columns.set(widthGroupKey, columnNodes);
         }
         const overallProgress = 35 + Math.floor((processedCount / totalComponents) * 55);
         const elapsedTime = Date.now() - startTime;
@@ -1342,6 +1332,31 @@ async function processAndArrangeComponents(componentsMap, instanceMap, targetPag
         await sendProgressMessage(`[4/4] 正在处理组件 ${processedCount}/${totalComponents}，预计剩余时间: ${remainingTime}秒`, overallProgress);
         if (i > 0 && i % (adaptiveBatchSize * 2) === 0) {
             await new Promise(resolve => setTimeout(resolve, 1));
+        }
+    }
+    // 收集完成后统一按宽度分列排版：
+    // - 同宽度组件归入同一列
+    // - 列内纵向排列，间距 200
+    // - 列间横向间距 200，列宽按该列最大组件宽度计算
+    for (const [, pageLayout] of layoutGroupsByPage) {
+        let xOffset = 0;
+        const sortedColumns = Array.from(pageLayout.columns.entries()).sort((a, b) => b[0] - a[0]);
+        for (const [, columnNodes] of sortedColumns) {
+            let yOffset = 0;
+            let maxColumnWidth = 0;
+            for (const node of columnNodes) {
+                maxColumnWidth = Math.max(maxColumnWidth, node.width);
+                try {
+                    node.x = xOffset;
+                    node.y = yOffset;
+                    yOffset += node.height + spacing;
+                }
+                catch (e) {
+                    if (e instanceof Error)
+                        console.warn(`无法设置节点位置: ${node.name} - ${e.message}`);
+                }
+            }
+            xOffset += maxColumnWidth + spacing;
         }
     }
     // 补偿重绑：第一次收集时，新克隆母组件内部产生的实例不在初次 instanceMap 中
