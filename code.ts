@@ -855,7 +855,23 @@ function inferResidueReason(
   return '实例在普通画布节点中，可能是该实例 swapComponent 失败（权限/只读/目标变体不可匹配）';
 }
 
-async function diagnoseExternalResidues(maxEntries = 12): Promise<ExternalResidueReport> {
+function getInstanceMarkerCandidates(mainComponent: ComponentNode): string[] {
+  const sourceType = mainComponent.parent?.type === 'COMPONENT_SET' ? 'component-set' : 'component';
+  const candidates = new Set<string>();
+  candidates.add(`${sourceType}:${getCollectionKeyFromMainComponent(mainComponent)}`);
+  if (mainComponent.key) {
+    candidates.add(`${sourceType}:${mainComponent.key}`);
+  }
+  if (mainComponent.parent?.type === 'COMPONENT_SET' && (mainComponent.parent as ComponentSetNode).key) {
+    candidates.add(`${sourceType}:${(mainComponent.parent as ComponentSetNode).key}`);
+  }
+  return Array.from(candidates);
+}
+
+async function diagnoseExternalResidues(
+  expectedMarkers?: Set<string>,
+  maxEntries = 12
+): Promise<ExternalResidueReport> {
   const collectedMarkers = new Set<string>();
   for (const page of figma.root.children) {
     const collectedNodes = page.findAll((n) => {
@@ -884,13 +900,18 @@ async function diagnoseExternalResidues(maxEntries = 12): Promise<ExternalResidu
           : mainComponent;
       if (isNodeInCurrentDocument(targetNodeForSource)) continue;
 
+      const markerCandidates = getInstanceMarkerCandidates(mainComponent);
+      if (expectedMarkers && !markerCandidates.some(marker => expectedMarkers.has(marker))) {
+        // 不在本次收集目标范围内的外部实例，不计入本次残留
+        continue;
+      }
+
       residueCount++;
       if (lines.length >= maxEntries) continue;
 
-      const stableKey = getCollectionKeyFromMainComponent(mainComponent);
       const sourceType = mainComponent.parent?.type === 'COMPONENT_SET' ? 'component-set' : 'component';
-      const marker = `${sourceType}:${stableKey}`;
-      const hasCollectedMarker = collectedMarkers.has(marker);
+      const marker = markerCandidates[0] || `${sourceType}:${getCollectionKeyFromMainComponent(mainComponent)}`;
+      const hasCollectedMarker = markerCandidates.some(candidate => collectedMarkers.has(candidate));
       const ancestorMarker = findAncestorCollectedMarker(instance);
       const reason = inferResidueReason(hasCollectedMarker, ancestorMarker);
       lines.push(
@@ -1567,6 +1588,12 @@ async function processAndArrangeComponents(
   let fallbackToClone = 0;
   const processedRootNodes: SceneNode[] = [];
   const failedInstanceDiagnostics: string[] = [];
+  const expectedResidueMarkers = new Set<string>();
+  for (const [, info] of componentsMap) {
+    const sourceType = info.componentSet ? 'component-set' : 'component';
+    expectedResidueMarkers.add(`${sourceType}:${getCollectionKeyFromInfo(info)}`);
+    expectedResidueMarkers.add(`${sourceType}:${getSourceStableKey(info)}`);
+  }
   
   const totalComponents = componentsMap.size;
   let processedCount = 0;
@@ -1683,7 +1710,7 @@ async function processAndArrangeComponents(
   instancesFailed += nestedRebind.failed;
   nestedRebind.diagnostics.forEach(line => appendDiagnosticLine(failedInstanceDiagnostics, line));
 
-  const residueReport = await diagnoseExternalResidues();
+  const residueReport = await diagnoseExternalResidues(expectedResidueMarkers);
   if (residueReport.count > 0) {
     console.warn(`收集后仍存在外部组件实例: ${residueReport.count}`);
     residueReport.lines.forEach(line => console.warn(line));
