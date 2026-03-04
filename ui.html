@@ -52,7 +52,7 @@
       flex-direction: column;
     }
     #mainScreen {
-      width: 340px;
+      width: 400px;
       height: 600px;
       margin: 0 auto;
       background: #fff;
@@ -64,7 +64,7 @@
     }
 
     .pre-canvas {
-      width: 340px;
+      width: 400px;
       height: 600px;
       position: relative;
       background: #fff;
@@ -72,7 +72,8 @@
 
     .pre-image-frame {
       position: absolute;
-      left: 60px;
+      left: 50%;
+      transform: translateX(-50%);
       top: 80px;
       width: 220px;
       height: 220px;
@@ -100,7 +101,8 @@
 
     .pre-header {
       position: absolute;
-      left: 30px;
+      left: 50%;
+      transform: translateX(-50%);
       top: 410px;
       width: 280px;
       text-align: center;
@@ -113,13 +115,13 @@
     .pre-title {
       font-size: 16px;
       color: #1f1f1f;
-      font-weight: 900;
+      font-weight: 600;
       line-height: 1.3;
     }
 
     .pre-subtitle-img {
-      width: 90px;
-      height: 11px;
+      width: 79.035px;
+      height: 9.719px;
       object-fit: contain;
       object-position: center;
       opacity: 0.9;
@@ -138,18 +140,20 @@
     .pre-actions {
       position: absolute;
       left: 20px;
-      top: 474px;
-      width: 300px;
+      bottom: 20px;
+      right: 20px;
+      width: auto;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 10px;
     }
 
     .pre-btn {
-      width: 100%;
+      width: auto;
+      flex: 1;
       height: 48px;
       border-radius: 2px;
-      border: 1px solid #cccccc;
+      border: 0.5px solid #cccccc;
       background: #fff;
       color: #333;
       cursor: pointer;
@@ -159,7 +163,7 @@
 
     .pre-btn.primary {
       background: #18a0fb;
-      border-color: #18a0fb;
+      border: none;
       color: #fff;
     }
 
@@ -169,7 +173,7 @@
       padding: 20px 20px 10px;
       display: flex;
       flex-direction: column;
-      gap: 17px;
+      gap: 20px;
     }
 
     .topbar {
@@ -257,7 +261,7 @@
 
     .table-head {
       display: grid;
-      grid-template-columns: 1.6fr 0.6fr 0.6fr 0.55fr;
+      grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
       column-gap: 10px;
       height: 14px;
       align-items: center;
@@ -265,6 +269,20 @@
       color: rgba(0, 0, 0, 0.5);
       font-size: 10px;
       font-weight: 400;
+    }
+    .sort-btn {
+      border: 0;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.5);
+      font-size: 10px;
+      font-weight: 400;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .sort-btn.active {
+      color: #000;
+      font-weight: 600;
     }
 
     .table-head > :nth-child(2),
@@ -281,13 +299,29 @@
 
     .row {
       display: grid;
-      grid-template-columns: 1.6fr 0.6fr 0.6fr 0.55fr;
+      grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
       column-gap: 10px;
       align-items: center;
-      padding: 10px 0;
+      padding: 0;
       border-bottom: 0.5px solid #e0e0e0;
-      min-height: 40px;
+      height: 48px;
       cursor: pointer;
+    }
+    .row.active {
+      background: #e8f3ff;
+    }
+    .name-cell {
+      display: flex;
+      height: 100%;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .collect-check {
+      width: 12px;
+      height: 12px;
+      accent-color: #18a0fb;
+      flex-shrink: 0;
     }
 
 
@@ -301,7 +335,19 @@
       -webkit-box-orient: vertical;
       color: #1f2328;
       font-size: 12px;
-      font-weight: 400;
+      font-weight: 600;
+      line-height: 14px;
+      height: 28px;
+    }
+    .name.one-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      -webkit-box-orient: unset;
     }
 
     .cell-muted {
@@ -340,7 +386,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 0;
     }
 
     .metrics {
@@ -372,21 +418,22 @@
     .metric-sub {
       font-size: 10px;
       color: rgba(0, 0, 0, 0.5);
-      margin-top: 2px;
+      margin-top: 0;
       font-weight: 400;
     }
 
     .bottom-btn {
-      min-width: 126px;
+      width: 175px;
       height: 48px;
       border: 0;
       background: #18a0fb;
       color: #fff;
       font-size: 14px;
       font-weight: 400;
+      line-height: normal;
       cursor: pointer;
       border-radius: 2px;
-      padding: 0 16px;
+      padding: 16px;
     }
 
     .settings {
@@ -530,6 +577,30 @@
       font-size: 12px;
       font-weight: 400;
     }
+    .status-line.warning {
+      justify-content: center;
+      text-align: center;
+      padding: 0 10px;
+      background: #fff4e5;
+      color: #b54708;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .result-details {
+      margin-top: 8px;
+      max-height: 140px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 10px;
+      line-height: 1.45;
+      color: #344054;
+      border: 0.5px solid #d9dade;
+      background: #f9fafb;
+      padding: 8px;
+      user-select: text;
+    }
 
     .close-status {
       position: absolute;
@@ -572,7 +643,7 @@
         </div>
         <div class="pre-actions">
           <button class="pre-btn" id="scanFileBtn">整个文件</button>
-          <button class="pre-btn primary" id="scanPageBtn">当前页面 / 当前选择</button>
+          <button class="pre-btn primary" id="scanPageBtn">当前页面</button>
         </div>
       </div>
     </div>
@@ -594,10 +665,10 @@
           </div>
         </div>
         <div class="table-head">
-          <div>组件名称</div>
-          <div>组件类型</div>
-          <div>实例数量</div>
-          <div>组件位置</div>
+          <div><button class="sort-btn active" id="sortNameBtn">组件名称 ↑</button></div>
+          <div><button class="sort-btn" id="sortTypeBtn">组件类型</button></div>
+          <div><button class="sort-btn" id="sortInstancesBtn">实例数量</button></div>
+          <div><button class="sort-btn" id="sortLocationBtn">组件位置</button></div>
         </div>
       </div>
 
@@ -647,6 +718,7 @@
 
         <div class="hidden" id="resultWrap">
           <div class="status-line success" id="resultLine"></div>
+          <div class="result-details hidden" id="resultDetails"></div>
         </div>
       </div>
     </div>
@@ -657,6 +729,12 @@
     let currentMode = 'page';
     let lastScanData = null;
     let filtered = [];
+    let hasSelectionInCanvas = false;
+    let selectedComponentIds = new Set();
+    let activeComponentId = null;
+    let sortState = { key: 'name', direction: 'asc' };
+    let scanButtonMode = 'page';
+    let componentById = new Map();
 
     const preScreen = document.getElementById('preScreen');
     const mainScreen = document.getElementById('mainScreen');
@@ -664,6 +742,11 @@
 
     const scopeLabel = document.getElementById('scopeLabel');
     const sourceFilter = document.getElementById('sourceFilter');
+    const scanPageBtn = document.getElementById('scanPageBtn');
+    const sortNameBtn = document.getElementById('sortNameBtn');
+    const sortTypeBtn = document.getElementById('sortTypeBtn');
+    const sortInstancesBtn = document.getElementById('sortInstancesBtn');
+    const sortLocationBtn = document.getElementById('sortLocationBtn');
 
     const metricComponents = document.getElementById('metricComponents');
     const metricInstances = document.getElementById('metricInstances');
@@ -682,6 +765,7 @@
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
     const resultLine = document.getElementById('resultLine');
+    const resultDetails = document.getElementById('resultDetails');
     const preHeroImage = document.getElementById('preHeroImage');
     const preSubtitleImage = document.getElementById('preSubtitleImage');
     const preSubtitleText = document.getElementById('preSubtitleText');
@@ -719,6 +803,93 @@
       parent.postMessage({ pluginMessage: { type: `scan-${mode}` } }, '*');
     }
 
+    function updateScanSelectionButton() {
+      if (hasSelectionInCanvas) {
+        scanButtonMode = 'selection';
+        scanPageBtn.textContent = '选中';
+      } else {
+        scanButtonMode = 'page';
+        scanPageBtn.textContent = '当前页面';
+      }
+    }
+
+    function updateSortButtons() {
+      sortNameBtn.classList.toggle('active', sortState.key === 'name');
+      sortTypeBtn.classList.toggle('active', sortState.key === 'type');
+      sortInstancesBtn.classList.toggle('active', sortState.key === 'instanceCount');
+      sortLocationBtn.classList.toggle('active', sortState.key === 'location');
+      sortNameBtn.textContent = `组件名称${sortState.key === 'name' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
+      sortTypeBtn.textContent = `组件类型${sortState.key === 'type' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
+      sortInstancesBtn.textContent = `实例数量${sortState.key === 'instanceCount' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
+      sortLocationBtn.textContent = `组件位置${sortState.key === 'location' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
+    }
+
+    function getCollectTargets() {
+      if (!lastScanData) return [];
+      if (selectedComponentIds.size === 0) return filtered;
+      return (lastScanData.components || []).filter((c) => selectedComponentIds.has(c.id));
+    }
+
+    function updateImpactAndOptions() {
+      const totalInstances = filtered.reduce((sum, c) => sum + (c.instanceCount || 0), 0);
+      const externalOnly = sourceFilter.value === 'external';
+      const collectTargets = getCollectTargets();
+      const collectInstances = collectTargets.reduce((sum, c) => sum + (c.instanceCount || 0), 0);
+      const selectedPrefix = selectedComponentIds.size > 0 ? `已选择 ${collectTargets.length} 个` : `组件 ${filtered.length}`;
+      impact.textContent = `影响预览：${selectedPrefix} · 实例 ${collectInstances}（列表总实例 ${totalInstances}）`;
+
+      if (externalOnly) {
+        moveInternalToggle.checked = false;
+        moveInternalToggle.disabled = true;
+      } else {
+        moveInternalToggle.disabled = false;
+      }
+    }
+
+    function scrollAndHighlightComponent(componentId) {
+      if (!componentId || !lastScanData) return;
+      activeComponentId = componentId;
+      listEl.querySelectorAll('.row.active').forEach((r) => r.classList.remove('active'));
+      let row = listEl.querySelector(`.row[data-component-id="${componentId}"]`);
+      if (!row) {
+        const existsInAll = (lastScanData.components || []).some((c) => c.id === componentId);
+        if (existsInAll && sourceFilter.value !== 'all') {
+          sourceFilter.value = 'all';
+          applyFilterAndRender();
+          row = listEl.querySelector(`.row[data-component-id="${componentId}"]`);
+        }
+      }
+      if (!row) return;
+      row.classList.add('active');
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+
+    function clearActiveHighlight() {
+      activeComponentId = null;
+      listEl.querySelectorAll('.row.active').forEach((r) => r.classList.remove('active'));
+    }
+
+    function applyTitleVerticalAlignment() {
+      const nameEls = listEl.querySelectorAll('.name');
+      nameEls.forEach((el) => {
+        el.classList.remove('one-line');
+        // Measure natural wrapped height; fixed CSS height would hide true line count.
+        const prevWebkitLineClamp = el.style.webkitLineClamp;
+        const prevLineClamp = el.style.lineClamp;
+        const prevHeight = el.style.height;
+        el.style.webkitLineClamp = 'unset';
+        el.style.lineClamp = 'unset';
+        el.style.height = 'auto';
+        const naturalHeight = el.scrollHeight;
+        el.style.webkitLineClamp = prevWebkitLineClamp;
+        el.style.lineClamp = prevLineClamp;
+        el.style.height = prevHeight;
+        if (naturalHeight <= 16) {
+          el.classList.add('one-line');
+        }
+      });
+    }
+
     function applyFilterAndRender() {
       if (!lastScanData) return;
       const source = sourceFilter.value;
@@ -726,6 +897,23 @@
         if (source === 'external') return c.isExternal === true;
         if (source === 'internal') return c.isExternal === false;
         return true;
+      });
+      const direction = sortState.direction === 'asc' ? 1 : -1;
+      filtered.sort((a, b) => {
+        if (sortState.key === 'instanceCount') {
+          return ((a.instanceCount || 0) - (b.instanceCount || 0)) * direction;
+        }
+        if (sortState.key === 'type') {
+          const ta = a.type === 'component-set' ? 1 : 0;
+          const tb = b.type === 'component-set' ? 1 : 0;
+          return (ta - tb) * direction;
+        }
+        if (sortState.key === 'location') {
+          const la = a.isExternal ? 1 : 0;
+          const lb = b.isExternal ? 1 : 0;
+          return (la - lb) * direction;
+        }
+        return a.name.localeCompare(b.name, 'zh-Hans-CN') * direction;
       });
 
       if (filtered.length === 0) {
@@ -736,8 +924,10 @@
           const posText = c.isExternal ? '外部' : '本地';
           const sourceNodeId = c.sourceNodeId || '';
           const firstInstanceId = c.firstInstanceId || '';
-          return `<div class="row" data-source-node-id="${sourceNodeId}" data-first-instance-id="${firstInstanceId}">
-            <div class="name" title="${c.name}">${c.name}</div>
+          const checked = selectedComponentIds.has(c.id) ? 'checked' : '';
+          const activeClass = activeComponentId === c.id ? 'active' : '';
+          return `<div class="row ${activeClass}" data-component-id="${c.id}" data-source-node-id="${sourceNodeId}" data-first-instance-id="${firstInstanceId}" data-is-external="${c.isExternal ? '1' : '0'}">
+            <div class="name-cell"><input class="collect-check" type="checkbox" data-check-id="${c.id}" ${checked}><div class="name" title="${c.name}">${c.name}</div></div>
             <div class="cell-muted">${typeText}</div>
             <div class="cell-strong">${c.instanceCount}</div>
             <div class="cell-muted">${posText}</div>
@@ -750,52 +940,95 @@
       metricComponents.textContent = String(filtered.length);
       metricSets.textContent = String(totalSets);
       metricInstances.textContent = String(totalInstances);
-
-      impact.textContent = `影响预览：组件 ${filtered.length} · 实例 ${totalInstances}`;
-      updateOptionState();
-    }
-
-    function updateOptionState() {
-      const externalOnly = sourceFilter.value === 'external';
-      if (externalOnly) {
-        moveInternalToggle.checked = false;
-        moveInternalToggle.disabled = true;
-      } else {
-        moveInternalToggle.disabled = false;
-      }
+      applyTitleVerticalAlignment();
+      updateSortButtons();
+      updateImpactAndOptions();
     }
 
     function openMainIfNeeded() {
       hasScanned = true;
       preScreen.classList.add('hidden');
       mainScreen.classList.remove('hidden');
-      parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 340, height: 600 } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 400, height: 600 } }, '*');
     }
 
     document.getElementById('scanFileBtn').addEventListener('click', () => scan('file'));
-    document.getElementById('scanPageBtn').addEventListener('click', () => scan('page'));
+    document.getElementById('scanPageBtn').addEventListener('click', () => scan(scanButtonMode));
     document.getElementById('refreshBtn').addEventListener('click', () => scan(currentMode));
     document.getElementById('backBtn').addEventListener('click', () => {
       mainScreen.classList.add('hidden');
       preScreen.classList.remove('hidden');
-      parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 340, height: 600 } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 400, height: 600 } }, '*');
     });
 
     sourceFilter.addEventListener('change', applyFilterAndRender);
+    sortNameBtn.addEventListener('click', () => {
+      if (sortState.key === 'name') {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = 'name';
+        sortState.direction = 'asc';
+      }
+      applyFilterAndRender();
+    });
+    sortTypeBtn.addEventListener('click', () => {
+      if (sortState.key === 'type') {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = 'type';
+        sortState.direction = 'asc';
+      }
+      applyFilterAndRender();
+    });
+    sortInstancesBtn.addEventListener('click', () => {
+      if (sortState.key === 'instanceCount') {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = 'instanceCount';
+        sortState.direction = 'desc';
+      }
+      applyFilterAndRender();
+    });
+    sortLocationBtn.addEventListener('click', () => {
+      if (sortState.key === 'location') {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.key = 'location';
+        sortState.direction = 'asc';
+      }
+      applyFilterAndRender();
+    });
 
     listEl.addEventListener('click', (e) => {
+      const check = e.target.closest('.collect-check');
+      if (check) {
+        const componentId = check.dataset.checkId;
+        if (componentId) {
+          if (check.checked) selectedComponentIds.add(componentId);
+          else selectedComponentIds.delete(componentId);
+          updateImpactAndOptions();
+        }
+        return;
+      }
       const row = e.target.closest('.row');
       if (!row) return;
       const sourceNodeId = row.dataset.sourceNodeId || '';
       const firstInstanceId = row.dataset.firstInstanceId || '';
+      const componentId = row.dataset.componentId || '';
+      const isExternal = row.dataset.isExternal === '1';
       if (sourceNodeId || firstInstanceId) {
         parent.postMessage({
           pluginMessage: {
             type: 'focus-component',
             sourceNodeId,
-            firstInstanceId: firstInstanceId || null
+            firstInstanceId: firstInstanceId || null,
+            isExternal
           }
         }, '*');
+      }
+      if (componentId) {
+        activeComponentId = componentId;
+        applyFilterAndRender();
       }
     });
 
@@ -819,6 +1052,8 @@
       const externalOnly = sourceFilter.value === 'external';
       const moveInternal = moveInternalToggle.checked;
       const externalSeparatePage = externalSeparatePageToggle.checked;
+      const collectTargets = getCollectTargets();
+      const selectedIds = collectTargets.map((c) => c.id);
 
       if (moveInternal) {
         const confirmed = window.confirm(`将移动内部组件并重绑实例，是否继续？`);
@@ -837,7 +1072,8 @@
           scope: currentMode,
           externalOnly,
           moveInternal,
-          externalSeparatePage
+          externalSeparatePage,
+          selectedComponentIds: selectedIds
         }
       }, '*');
     });
@@ -851,18 +1087,31 @@
       if (!msg) return;
 
       if (msg.type === 'selection-changed') {
-        const btn = document.getElementById('scanPageBtn');
-        btn.textContent = msg.hasSelection ? '当前页面 / 当前选择（已选）' : '当前页面 / 当前选择';
+        hasSelectionInCanvas = msg.hasSelection === true;
+        updateScanSelectionButton();
+        if (hasScanned) {
+          if (msg.selectedComponentKey) {
+            scrollAndHighlightComponent(msg.selectedComponentKey);
+          } else {
+            clearActiveHighlight();
+          }
+        }
       }
 
       if (msg.type === 'scan-results') {
         openMainIfNeeded();
         lastScanData = msg.data;
+        componentById = new Map((msg.data.components || []).map((c) => [c.id, c]));
+        selectedComponentIds.clear();
         currentMode = msg.data.scope || currentMode;
         const map = { file: '整个文件', page: '当前页面', selection: '当前选择' };
         scopeLabel.textContent = map[currentMode] || '当前页面';
+        activeComponentId = msg.data.selectedComponentKey || null;
         showBottom('summary');
         applyFilterAndRender();
+        if (activeComponentId) {
+          scrollAndHighlightComponent(activeComponentId);
+        }
       }
 
       if (msg.type === 'progress') {
@@ -875,9 +1124,26 @@
 
       if (msg.type === 'success') {
         resultLine.className = 'status-line success';
-        resultLine.textContent = '已完成收集';
+        resultLine.textContent = msg.message || '已完成收集';
         if (msg.details) {
-          resultLine.title = String(msg.details);
+          resultDetails.textContent = String(msg.details);
+          resultDetails.classList.remove('hidden');
+        } else {
+          resultDetails.textContent = '';
+          resultDetails.classList.add('hidden');
+        }
+        showBottom('result');
+      }
+
+      if (msg.type === 'warning') {
+        resultLine.className = 'status-line warning';
+        resultLine.textContent = msg.message || '部分成功';
+        if (msg.details) {
+          resultDetails.textContent = String(msg.details);
+          resultDetails.classList.remove('hidden');
+        } else {
+          resultDetails.textContent = '';
+          resultDetails.classList.add('hidden');
         }
         showBottom('result');
       }
@@ -885,9 +1151,19 @@
       if (msg.type === 'error') {
         resultLine.className = 'status-line error';
         resultLine.textContent = msg.message || '收集失败';
+        if (msg.details) {
+          resultDetails.textContent = String(msg.details);
+          resultDetails.classList.remove('hidden');
+        } else {
+          resultDetails.textContent = '';
+          resultDetails.classList.add('hidden');
+        }
         showBottom('result');
       }
     };
+
+    updateSortButtons();
+    updateScanSelectionButton();
   </script>
 </body>
 </html>
