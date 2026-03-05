@@ -1,6 +1,6 @@
 {
-  "name": "SAKURA收集组件",
-  "version": "1.1.0",
+  "name": "Component Collector",
+  "version": "2.0.0",
   "description": "高性能Figma组件收集插件，具备智能扫描和优化的组件管理功能",
   "main": "code.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "perf:test": "node --expose-gc performance-test.js",
     "perf:monitor": "node performance-monitor.js"
   },
-  "author": "SAKURA Team",
+  "author": "SAKURA",
   "license": "MIT",
   "keywords": [
     "figma",
