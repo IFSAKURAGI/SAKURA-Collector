@@ -283,11 +283,11 @@
 
     .table-head {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
-      column-gap: 20px;
+      grid-template-columns: minmax(0, 1fr) 64px 64px;
+      column-gap: 12px;
       height: 14px;
       align-items: center;
-      padding: 0 20px 0 0;
+      padding: 0 6px 0 0;
       color: rgba(0, 0, 0, 0.5);
       font-size: 10px;
       font-weight: 400;
@@ -301,15 +301,27 @@
       cursor: pointer;
       padding: 0;
       line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      white-space: nowrap;
     }
     .sort-btn.active {
       color: #000;
       font-weight: 600;
     }
+    .sort-btn .sort-icon {
+      width: 10px;
+      height: 10px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .sort-btn .sort-icon.desc {
+      transform: scaleY(-1);
+    }
 
     .table-head > :nth-child(2),
-    .table-head > :nth-child(3),
-    .table-head > :nth-child(4) {
+    .table-head > :nth-child(3) {
       text-align: left;
     }
 
@@ -321,13 +333,17 @@
 
     .row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
-      column-gap: 20px;
+      grid-template-columns: minmax(0, 1fr) 64px 64px;
+      column-gap: 12px;
       align-items: center;
-      padding: 0 20px 0 0;
+      padding: 0 6px 0 0;
       border-bottom: 0.5px solid #e0e0e0;
       height: 40px;
       cursor: pointer;
+      overflow: hidden;
+    }
+    .row > * {
+      min-width: 0;
     }
     .row.active {
       background: #e8f3ff;
@@ -338,6 +354,7 @@
       align-items: center;
       gap: 8px;
       min-width: 0;
+      overflow: hidden;
     }
     .collect-check {
       width: 16px;
@@ -360,8 +377,12 @@
 
 
     .name {
+      flex: 0 1 auto;
+      width: calc(100% - 24px);
+      max-width: calc(100% - 24px);
+      min-width: 0;
       overflow: hidden;
-      text-overflow: ellipsis;
+      text-overflow: clip;
       white-space: nowrap;
       display: block;
       color: #1f2328;
@@ -373,9 +394,8 @@
     .name.one-line {
       white-space: nowrap;
       overflow: hidden;
-      text-overflow: ellipsis;
-      display: flex;
-      align-items: center;
+      text-overflow: clip;
+      display: block;
       -webkit-line-clamp: unset;
       line-clamp: unset;
       -webkit-box-orient: unset;
@@ -386,6 +406,9 @@
       font-size: 10px;
       font-weight: 400;
       text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .cell-strong {
@@ -394,6 +417,9 @@
       text-align: left;
       font-family: 'DIN Alternate', 'Arial Narrow', sans-serif;
       font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .bottom {
@@ -470,42 +496,7 @@
     .settings {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-    }
-
-    .check-rows {
-      display: flex;
-      flex-direction: row;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .check-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #475467;
-      font-size: 12px;
-    }
-
-    .check-row input.setting-check {
-      width: 16px;
-      height: 16px;
-      appearance: none;
-      -webkit-appearance: none;
-      border: none;
-      border-radius: 0;
-      background-color: transparent;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 16px 16px;
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAN5JREFUeAHtmDF2wjAQBb/WLvNAfpA+KenITbhCbpCchCNwheQk0FFCb2xLQKtdtDxo6K1qp5OamVW3csjs94ePqpKNAMt89BgbkT9m+l0sPo9O5VTJdjZrfOMnICKMCTMjnq9o2y5wcl811bx+n8/v8hLogOrilHzfxw1B3Go6eUNpmmYKgSzpWVWah9OXN79gARZgARZgARZgARZgARZgARoQdF0qzdNJDtgNQ0RpYrxAGP+Ukvvu+hA0osRLqKPrBrSnPoi4H6eX9w25xjqvzSuMT8jfADvJg+t6fgOyMV1nQsGXMAAAAABJRU5ErkJggg==");
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .check-row input.setting-check:checked {
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAVpJREFUeAHtl7FKw0AYx//fJRQEEXGxiyLo6GDX1sXJLoIgdM8b6BP4CNoniC9Q0FFcnFwcdOgDdMxUxEXQ1PP+oYOISVp7uQPJH44EAvf73d0HuU9g0ozftiBhrIE9AVZRcQznWnR4lkQyEsK1hE8uwD8kXoxESxn4hWs4kzEljZV5OYan8MgVPIa74FWAqQX+p0B7XTA4DLKxsQy3Ar1thUE3QLsp2bjsBHAmQHh/f74prQn8Bn99B84fJ6hcIA9+cptiOEa1AovASwVYwazku6MA3U2xDi8VYAWzknfXBPFBgN6OsgpnQsyRfmcKNL8xG3BGmlcfOu8jV84jWGmgMH+FM4VHMBxrM/EkA1QBLxUok1gUPpNAnoQN+MwC3yX4fEi0FThTWIQuUl9IagHFFgkew87oGZ6i9eeNgk4jH7uQNadonKokWhqJTltsmeEg08XeszNme/4FDKujlSfxPfkAAAAASUVORK5CYII=");
+      gap: 0;
     }
 
     .settings-actions {
@@ -546,12 +537,6 @@
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
-    }
-
-    .impact {
-      color: #98a2b3;
-      font-size: 10px;
-      line-height: 1.4;
     }
 
     .status-line {
@@ -843,8 +828,7 @@
           </div>
         </div>
         <div class="table-head">
-          <div><button class="sort-btn active" id="sortNameBtn">组件名称 ↑</button></div>
-          <div><button class="sort-btn" id="sortTypeBtn">组件类型</button></div>
+          <div><button class="sort-btn active" id="sortNameBtn">组件名称</button></div>
           <div><button class="sort-btn" id="sortInstancesBtn">实例数量</button></div>
           <div><button class="sort-btn" id="sortLocationBtn">组件位置</button></div>
         </div>
@@ -874,11 +858,6 @@
         </div>
 
         <div class="settings hidden" id="settingsBar">
-          <div class="check-rows">
-            <label class="check-row"><input class="setting-check" type="checkbox" id="moveInternalToggle"> 移动当前文件组件</label>
-            <label class="check-row"><input class="setting-check" type="checkbox" id="externalSeparatePageToggle"> 外部组件单独页面</label>
-          </div>
-          <div class="impact" id="impact">影响预览：组件 0 · 实例 0</div>
           <div class="settings-actions">
             <button class="mini-btn" id="closeSettingsBtn">✕</button>
             <input class="page-input" id="pageNameInput" value="_Comp" />
@@ -940,6 +919,7 @@
     let scanButtonMode = 'page';
     let componentById = new Map();
     let previousScreenForSettings = 'main';
+    const SORT_ARROW_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAJBJREFUeAHtj7EKhTAMRe/z6aCriCA6KKiL4Oz/D36Ii+Di5OJiih0EU1PESTxwoA1JuAE+3s/PoicgO/3uyeWq2YFMSfraVmqWFqZkdviHZHx3oTq1ZuoN6ZqG/jBTkRFT93SQiRtyLtLlMFNgP996YQeZiityJ6tkCWTUFSs5H4tcwgL2nFJyC0fYM+DjcTayPglv+jLq1gAAAABJRU5ErkJggg==';
     let pluginSettings = {
       moveInternal: true,
       externalSeparatePage: false,
@@ -955,7 +935,6 @@
     const sourceFilter = document.getElementById('sourceFilter');
     const scanPageBtn = document.getElementById('scanPageBtn');
     const sortNameBtn = document.getElementById('sortNameBtn');
-    const sortTypeBtn = document.getElementById('sortTypeBtn');
     const sortInstancesBtn = document.getElementById('sortInstancesBtn');
     const sortLocationBtn = document.getElementById('sortLocationBtn');
 
@@ -968,9 +947,6 @@
     const progressBarWrap = document.getElementById('progressBarWrap');
     const resultWrap = document.getElementById('resultWrap');
 
-    const moveInternalToggle = document.getElementById('moveInternalToggle');
-    const externalSeparatePageToggle = document.getElementById('externalSeparatePageToggle');
-    const impact = document.getElementById('impact');
     const pageNameInput = document.getElementById('pageNameInput');
 
     const progressFill = document.getElementById('progressFill');
@@ -1001,8 +977,6 @@
     }
 
     function syncPluginSettingsToUI() {
-      moveInternalToggle.checked = pluginSettings.moveInternal === true;
-      externalSeparatePageToggle.checked = pluginSettings.externalSeparatePage === true;
       pageNameInput.value = pluginSettings.defaultTargetPageName || '_Comp';
 
       pluginMoveInternalToggle.checked = pluginSettings.moveInternal === true;
@@ -1073,14 +1047,21 @@
     }
 
     function updateSortButtons() {
-      sortNameBtn.classList.toggle('active', sortState.key === 'name');
-      sortTypeBtn.classList.toggle('active', sortState.key === 'type');
-      sortInstancesBtn.classList.toggle('active', sortState.key === 'instanceCount');
-      sortLocationBtn.classList.toggle('active', sortState.key === 'location');
-      sortNameBtn.textContent = `组件名称${sortState.key === 'name' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
-      sortTypeBtn.textContent = `组件类型${sortState.key === 'type' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
-      sortInstancesBtn.textContent = `实例数量${sortState.key === 'instanceCount' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
-      sortLocationBtn.textContent = `组件位置${sortState.key === 'location' ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : ''}`;
+      const renderSortButton = (btn, label, key) => {
+        const isActive = sortState.key === key;
+        btn.classList.toggle('active', isActive);
+        if (!isActive) {
+          btn.textContent = label;
+          return;
+        }
+        const directionClass = sortState.direction === 'asc' ? 'asc' : 'desc';
+        btn.innerHTML = `${label}<img class="sort-icon ${directionClass}" src="${SORT_ARROW_ICON}" alt="">`;
+      };
+
+      renderSortButton(sortNameBtn, '组件名称', 'name');
+      renderSortButton(sortInstancesBtn, '实例数量', 'instanceCount');
+      renderSortButton(sortLocationBtn, '组件位置', 'location');
+
     }
 
     function getCollectTargets() {
@@ -1090,19 +1071,7 @@
     }
 
     function updateImpactAndOptions() {
-      const totalInstances = filtered.reduce((sum, c) => sum + (c.instanceCount || 0), 0);
-      const externalOnly = sourceFilter.value === 'external';
-      const collectTargets = getCollectTargets();
-      const collectInstances = collectTargets.reduce((sum, c) => sum + (c.instanceCount || 0), 0);
-      const selectedPrefix = selectedComponentIds.size > 0 ? `已选择 ${collectTargets.length} 个` : `组件 ${filtered.length}`;
-      impact.textContent = `影响预览：${selectedPrefix} · 实例 ${collectInstances}（列表总实例 ${totalInstances}）`;
-
-      if (externalOnly) {
-        moveInternalToggle.checked = false;
-        moveInternalToggle.disabled = true;
-      } else {
-        moveInternalToggle.disabled = false;
-      }
+      // 底部只保留目标页输入，不再展示影响预览与快捷开关
     }
 
     function scrollAndHighlightComponent(componentId) {
@@ -1126,6 +1095,70 @@
     function clearActiveHighlight() {
       activeComponentId = null;
       listEl.querySelectorAll('.row.active').forEach((r) => r.classList.remove('active'));
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getVisualUnits(text) {
+      return Array.from(String(text || '')).reduce((sum, ch) => {
+        return sum + (/[\u4e00-\u9fff]/.test(ch) ? 2 : 1);
+      }, 0);
+    }
+
+    function takeTailByVisualUnits(text, maxUnits) {
+      const chars = Array.from(String(text || ''));
+      let used = 0;
+      const picked = [];
+      for (let i = chars.length - 1; i >= 0; i--) {
+        const ch = chars[i];
+        const units = /[\u4e00-\u9fff]/.test(ch) ? 2 : 1;
+        if (used + units > maxUnits) break;
+        picked.unshift(ch);
+        used += units;
+      }
+      return picked.join('');
+    }
+
+    function formatComponentNameForDisplay(name, maxUnits = 30) {
+      const fullName = String(name || '').trim();
+      if (!fullName) return '';
+      if (getVisualUnits(fullName) <= maxUnits) return fullName;
+
+      const parts = fullName.split('/').map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        const selected = [];
+        let accUnits = 0;
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const candidate = parts[i];
+          const separatorUnits = selected.length > 0 ? 3 : 0; // " / "
+          const candidateUnits = getVisualUnits(candidate);
+          if (selected.length > 0 && (accUnits + separatorUnits + candidateUnits) > maxUnits - 6) {
+            break;
+          }
+          selected.unshift(candidate);
+          accUnits += separatorUnits + candidateUnits;
+        }
+        if (selected.length > 0) {
+          const prefix = '... / ';
+          const suffix = selected.join(' / ');
+          const allowedSuffixUnits = Math.max(1, maxUnits - 6);
+          if (getVisualUnits(suffix) <= allowedSuffixUnits) {
+            return `${prefix}${suffix}`;
+          }
+          return `${prefix}${takeTailByVisualUnits(suffix, allowedSuffixUnits)}`;
+        }
+      }
+
+      const prefix = '... / ';
+      const allowedTailUnits = Math.max(1, maxUnits - 6);
+      return `${prefix}${takeTailByVisualUnits(fullName, allowedTailUnits)}`;
     }
 
     function applyTitleVerticalAlignment() {
@@ -1172,11 +1205,6 @@
         if (sortState.key === 'instanceCount') {
           return ((a.instanceCount || 0) - (b.instanceCount || 0)) * direction;
         }
-        if (sortState.key === 'type') {
-          const ta = a.type === 'component-set' ? 1 : 0;
-          const tb = b.type === 'component-set' ? 1 : 0;
-          return (ta - tb) * direction;
-        }
         if (sortState.key === 'location') {
           const la = locationRank[getLocationType(a)];
           const lb = locationRank[getLocationType(b)];
@@ -1189,16 +1217,16 @@
         listEl.innerHTML = '<div class="empty">当前条件下未找到组件</div>';
       } else {
         listEl.innerHTML = filtered.map((c, idx) => {
-          const typeText = c.type === 'component-set' ? '变体' : '组件';
           const locationType = getLocationType(c);
           const posText = locationText[locationType];
           const sourceNodeId = c.sourceNodeId || '';
           const firstInstanceId = c.firstInstanceId || '';
           const checked = selectedComponentIds.has(c.id) ? 'checked' : '';
           const activeClass = activeComponentId === c.id ? 'active' : '';
+          const fullNameEscaped = escapeHtml(c.name || '');
+          const displayNameEscaped = escapeHtml(formatComponentNameForDisplay(c.name));
           return `<div class="row ${activeClass}" data-component-id="${c.id}" data-source-node-id="${sourceNodeId}" data-first-instance-id="${firstInstanceId}" data-is-external="${c.isExternal ? '1' : '0'}">
-            <div class="name-cell"><input class="collect-check" type="checkbox" data-check-id="${c.id}" ${checked}><div class="name" title="${c.name}">${c.name}</div></div>
-            <div class="cell-muted">${typeText}</div>
+            <div class="name-cell"><input class="collect-check" type="checkbox" data-check-id="${c.id}" ${checked}><div class="name" title="${fullNameEscaped}">${displayNameEscaped}</div></div>
             <div class="cell-strong">${c.instanceCount}</div>
             <div class="cell-muted">${posText}</div>
           </div>`;
@@ -1256,15 +1284,6 @@
         sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
       } else {
         sortState.key = 'name';
-        sortState.direction = 'asc';
-      }
-      applyFilterAndRender();
-    });
-    sortTypeBtn.addEventListener('click', () => {
-      if (sortState.key === 'type') {
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-      } else {
-        sortState.key = 'type';
         sortState.direction = 'asc';
       }
       applyFilterAndRender();
@@ -1330,9 +1349,6 @@
       showBottom('summary');
     });
 
-    moveInternalToggle.addEventListener('change', applyFilterAndRender);
-    externalSeparatePageToggle.addEventListener('change', applyFilterAndRender);
-
     initStateAAssets();
     parent.postMessage({ pluginMessage: { type: 'get-plugin-settings' } }, '*');
 
@@ -1341,8 +1357,8 @@
       if (!pageName) return;
 
       const externalOnly = sourceFilter.value === 'external';
-      const moveInternal = moveInternalToggle.checked;
-      const externalSeparatePage = externalSeparatePageToggle.checked;
+      const moveInternal = externalOnly ? false : (pluginSettings.moveInternal === true);
+      const externalSeparatePage = pluginSettings.externalSeparatePage === true;
       const collectTargets = getCollectTargets();
       const selectedIds = collectTargets.map((c) => c.id);
 

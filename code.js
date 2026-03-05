@@ -338,10 +338,19 @@ async function scanFileForComponents(scope) {
     const componentsMap = new Map();
     const startTime = Date.now();
     const skipPageNames = getPresetTargetPageNames();
+    let targetPageNameForDisplayFilter = DEFAULT_TARGET_PAGE_NAME;
+    try {
+        const settings = await loadPluginSettings();
+        targetPageNameForDisplayFilter =
+            normalizePageName(settings.defaultTargetPageName) || DEFAULT_TARGET_PAGE_NAME;
+    }
+    catch (error) {
+        console.warn('Failed to load plugin settings for scan filtering:', error);
+    }
     if (scope === 'selection') {
         console.log('Processing selection mode');
         if (shouldSkipPageForScanning(figma.currentPage, skipPageNames)) {
-            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection));
+            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection), targetPageNameForDisplayFilter);
         }
         const selection = figma.currentPage.selection;
         console.log('Current selection length:', selection.length);
@@ -397,13 +406,13 @@ async function scanFileForComponents(scope) {
                 figma.notify(`注意：选择的节点过多，仅处理了前${maxNodesToProcess}个节点。`, { timeout: 5000 });
             }
         }
-        return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection));
+        return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection), targetPageNameForDisplayFilter);
     }
     if (scope === 'page') {
         console.log('Processing page mode');
         const currentPage = figma.currentPage;
         if (shouldSkipPageForScanning(currentPage, skipPageNames)) {
-            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection));
+            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection), targetPageNameForDisplayFilter);
         }
         try {
             figma.ui.postMessage({
@@ -494,7 +503,7 @@ async function scanFileForComponents(scope) {
         let processedPages = 0;
         const concurrencyLimit = 8;
         if (totalPageCount === 0) {
-            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection));
+            return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection), targetPageNameForDisplayFilter);
         }
         for (let i = 0; i < pages.length; i += concurrencyLimit) {
             const batch = pages.slice(i, i + concurrencyLimit);
@@ -522,19 +531,56 @@ async function scanFileForComponents(scope) {
             await new Promise(resolve => setTimeout(resolve, 0));
         }
     }
-    return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection));
+    return buildScanResults(componentsMap, scope, await resolveSelectionComponentKey(figma.currentPage.selection), targetPageNameForDisplayFilter);
+}
+function buildCollectedLookupForTargetPage(page) {
+    const sourceMarkers = new Set();
+    const componentIds = new Set();
+    const componentSetIds = new Set();
+    const componentNodes = page.findAll(n => n.type === 'COMPONENT' || n.type === 'COMPONENT_SET');
+    componentNodes.forEach((node) => {
+        if (node.type === 'COMPONENT') {
+            componentIds.add(node.id);
+        }
+        else {
+            componentSetIds.add(node.id);
+        }
+        const sourceKey = node.getPluginData(COLLECTOR_SOURCE_KEY);
+        const sourceType = node.getPluginData(COLLECTOR_SOURCE_TYPE);
+        if (sourceKey && sourceType) {
+            sourceMarkers.add(`${sourceType}|${sourceKey}`);
+        }
+    });
+    return { sourceMarkers, componentIds, componentSetIds };
+}
+function hasCollectedMotherComponentInTargetPage(info, lookup) {
+    if (!lookup)
+        return false;
+    const sourceType = info.componentSet ? 'component-set' : 'component';
+    const sourceMarker = `${sourceType}|${getSourceStableKey(info)}`;
+    if (lookup.sourceMarkers.has(sourceMarker)) {
+        return true;
+    }
+    const sourceNode = info.componentSet || info.component;
+    return info.componentSet
+        ? lookup.componentSetIds.has(sourceNode.id)
+        : lookup.componentIds.has(sourceNode.id);
 }
 // 构建扫描结果
-function buildScanResults(componentsMap, scope, selectedComponentKey) {
+function buildScanResults(componentsMap, scope, selectedComponentKey, targetPageNameForDisplayFilter) {
     let componentSetCount = 0;
     const componentsList = [];
-    const maxComponentsToShow = 300;
     const componentEntries = Array.from(componentsMap.entries());
-    const componentsToShow = componentEntries.length > maxComponentsToShow
-        ? componentEntries.slice(0, maxComponentsToShow)
-        : componentEntries;
-    if (componentEntries.length > maxComponentsToShow) {
-        figma.notify(`检测到大量组件(${componentEntries.length}个)，仅显示前${maxComponentsToShow}个。`, { timeout: 5000 });
+    const normalizedTargetPageName = normalizePageName(targetPageNameForDisplayFilter) || DEFAULT_TARGET_PAGE_NAME;
+    const targetPage = figma.root.children.find(page => normalizePageName(page.name) === normalizedTargetPageName) || null;
+    const targetPageLookup = targetPage ? buildCollectedLookupForTargetPage(targetPage) : null;
+    const entriesToDisplay = componentEntries.filter(([, info]) => !hasCollectedMotherComponentInTargetPage(info, targetPageLookup));
+    const maxComponentsToShow = 300;
+    const componentsToShow = entriesToDisplay.length > maxComponentsToShow
+        ? entriesToDisplay.slice(0, maxComponentsToShow)
+        : entriesToDisplay;
+    if (entriesToDisplay.length > maxComponentsToShow) {
+        figma.notify(`检测到大量组件(${entriesToDisplay.length}个)，仅显示前${maxComponentsToShow}个。`, { timeout: 5000 });
     }
     const batchSize = 50;
     for (let i = 0; i < componentsToShow.length; i += batchSize) {
@@ -574,8 +620,8 @@ function buildScanResults(componentsMap, scope, selectedComponentKey) {
         });
     }
     return {
-        totalComponents: componentsMap.size,
-        totalInstances: Array.from(componentsMap.values()).reduce((sum, info) => sum + info.instanceCount, 0),
+        totalComponents: entriesToDisplay.length,
+        totalInstances: entriesToDisplay.reduce((sum, [, info]) => sum + info.instanceCount, 0),
         totalComponentSets: componentSetCount,
         components: componentsList,
         scope: scope,

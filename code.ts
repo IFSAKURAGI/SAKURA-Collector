@@ -433,6 +433,14 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
   const componentsMap = new Map<string, ComponentInfo>();
   const startTime = Date.now();
   const skipPageNames = getPresetTargetPageNames();
+  let targetPageNameForDisplayFilter = DEFAULT_TARGET_PAGE_NAME;
+  try {
+    const settings = await loadPluginSettings();
+    targetPageNameForDisplayFilter =
+      normalizePageName(settings.defaultTargetPageName) || DEFAULT_TARGET_PAGE_NAME;
+  } catch (error) {
+    console.warn('Failed to load plugin settings for scan filtering:', error);
+  }
   
   if (scope === 'selection') {
     console.log('Processing selection mode');
@@ -440,7 +448,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       return buildScanResults(
         componentsMap,
         scope,
-        await resolveSelectionComponentKey(figma.currentPage.selection)
+        await resolveSelectionComponentKey(figma.currentPage.selection),
+        targetPageNameForDisplayFilter
       );
     }
     const selection = figma.currentPage.selection;
@@ -509,7 +518,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
     return buildScanResults(
       componentsMap,
       scope,
-      await resolveSelectionComponentKey(figma.currentPage.selection)
+      await resolveSelectionComponentKey(figma.currentPage.selection),
+      targetPageNameForDisplayFilter
     );
   }
   
@@ -520,7 +530,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       return buildScanResults(
         componentsMap,
         scope,
-        await resolveSelectionComponentKey(figma.currentPage.selection)
+        await resolveSelectionComponentKey(figma.currentPage.selection),
+        targetPageNameForDisplayFilter
       );
     }
     
@@ -624,7 +635,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       return buildScanResults(
         componentsMap,
         scope,
-        await resolveSelectionComponentKey(figma.currentPage.selection)
+        await resolveSelectionComponentKey(figma.currentPage.selection),
+        targetPageNameForDisplayFilter
       );
     }
     
@@ -660,15 +672,66 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
   return buildScanResults(
     componentsMap,
     scope,
-    await resolveSelectionComponentKey(figma.currentPage.selection)
+    await resolveSelectionComponentKey(figma.currentPage.selection),
+    targetPageNameForDisplayFilter
   );
+}
+
+interface TargetPageCollectedLookup {
+  sourceMarkers: Set<string>;
+  componentIds: Set<string>;
+  componentSetIds: Set<string>;
+}
+
+function buildCollectedLookupForTargetPage(page: PageNode): TargetPageCollectedLookup {
+  const sourceMarkers = new Set<string>();
+  const componentIds = new Set<string>();
+  const componentSetIds = new Set<string>();
+
+  const componentNodes = page.findAll(
+    n => n.type === 'COMPONENT' || n.type === 'COMPONENT_SET'
+  ) as Array<ComponentNode | ComponentSetNode>;
+
+  componentNodes.forEach((node) => {
+    if (node.type === 'COMPONENT') {
+      componentIds.add(node.id);
+    } else {
+      componentSetIds.add(node.id);
+    }
+    const sourceKey = node.getPluginData(COLLECTOR_SOURCE_KEY);
+    const sourceType = node.getPluginData(COLLECTOR_SOURCE_TYPE);
+    if (sourceKey && sourceType) {
+      sourceMarkers.add(`${sourceType}|${sourceKey}`);
+    }
+  });
+
+  return { sourceMarkers, componentIds, componentSetIds };
+}
+
+function hasCollectedMotherComponentInTargetPage(
+  info: ComponentInfo,
+  lookup: TargetPageCollectedLookup | null
+): boolean {
+  if (!lookup) return false;
+
+  const sourceType = info.componentSet ? 'component-set' : 'component';
+  const sourceMarker = `${sourceType}|${getSourceStableKey(info)}`;
+  if (lookup.sourceMarkers.has(sourceMarker)) {
+    return true;
+  }
+
+  const sourceNode = info.componentSet || info.component;
+  return info.componentSet
+    ? lookup.componentSetIds.has(sourceNode.id)
+    : lookup.componentIds.has(sourceNode.id);
 }
 
 // 构建扫描结果
 function buildScanResults(
   componentsMap: Map<string, ComponentInfo>,
   scope: string,
-  selectedComponentKey: string | null
+  selectedComponentKey: string | null,
+  targetPageNameForDisplayFilter: string
 ) {
   let componentSetCount = 0;
   const componentsList: Array<{
@@ -684,14 +747,23 @@ function buildScanResults(
     type: string;
   }> = [];
   
-  const maxComponentsToShow = 300;
   const componentEntries = Array.from(componentsMap.entries());
-  const componentsToShow = componentEntries.length > maxComponentsToShow 
-    ? componentEntries.slice(0, maxComponentsToShow) 
-    : componentEntries;
+  const normalizedTargetPageName = normalizePageName(targetPageNameForDisplayFilter) || DEFAULT_TARGET_PAGE_NAME;
+  const targetPage = figma.root.children.find(
+    page => normalizePageName(page.name) === normalizedTargetPageName
+  ) || null;
+  const targetPageLookup = targetPage ? buildCollectedLookupForTargetPage(targetPage) : null;
+  const entriesToDisplay = componentEntries.filter(([, info]) =>
+    !hasCollectedMotherComponentInTargetPage(info, targetPageLookup)
+  );
+
+  const maxComponentsToShow = 300;
+  const componentsToShow = entriesToDisplay.length > maxComponentsToShow
+    ? entriesToDisplay.slice(0, maxComponentsToShow)
+    : entriesToDisplay;
   
-  if (componentEntries.length > maxComponentsToShow) {
-    figma.notify(`检测到大量组件(${componentEntries.length}个)，仅显示前${maxComponentsToShow}个。`, { timeout: 5000 });
+  if (entriesToDisplay.length > maxComponentsToShow) {
+    figma.notify(`检测到大量组件(${entriesToDisplay.length}个)，仅显示前${maxComponentsToShow}个。`, { timeout: 5000 });
   }
   
   const batchSize = 50;
@@ -735,8 +807,8 @@ function buildScanResults(
   }
   
   return {
-    totalComponents: componentsMap.size,
-    totalInstances: Array.from(componentsMap.values()).reduce((sum, info) => sum + info.instanceCount, 0),
+    totalComponents: entriesToDisplay.length,
+    totalInstances: entriesToDisplay.reduce((sum, [, info]) => sum + info.instanceCount, 0),
     totalComponentSets: componentSetCount,
     components: componentsList,
     scope: scope,
