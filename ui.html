@@ -148,6 +148,28 @@
       gap: 10px;
     }
 
+    .pre-settings-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 24px;
+      height: 24px;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pre-settings-icon {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
     .pre-btn {
       width: auto;
       flex: 1;
@@ -318,10 +340,22 @@
       min-width: 0;
     }
     .collect-check {
-      width: 12px;
-      height: 12px;
-      accent-color: #18a0fb;
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      border-radius: 0;
+      background-color: transparent;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 16px 16px;
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAN5JREFUeAHtmDF2wjAQBb/WLvNAfpA+KenITbhCbpCchCNwheQk0FFCb2xLQKtdtDxo6K1qp5OamVW3csjs94ePqpKNAMt89BgbkT9m+l0sPo9O5VTJdjZrfOMnICKMCTMjnq9o2y5wcl811bx+n8/v8hLogOrilHzfxw1B3Go6eUNpmmYKgSzpWVWah9OXN79gARZgARZgARZgARZgARZgARoQdF0qzdNJDtgNQ0RpYrxAGP+Ukvvu+hA0osRLqKPrBrSnPoi4H6eX9w25xjqvzSuMT8jfADvJg+t6fgOyMV1nQsGXMAAAAABJRU5ErkJggg==");
+      cursor: pointer;
+    }
+    .collect-check:checked {
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAVpJREFUeAHtl7FKw0AYx//fJRQEEXGxiyLo6GDX1sXJLoIgdM8b6BP4CNoniC9Q0FFcnFwcdOgDdMxUxEXQ1PP+oYOISVp7uQPJH44EAvf73d0HuU9g0ozftiBhrIE9AVZRcQznWnR4lkQyEsK1hE8uwD8kXoxESxn4hWs4kzEljZV5OYan8MgVPIa74FWAqQX+p0B7XTA4DLKxsQy3Ar1thUE3QLsp2bjsBHAmQHh/f74prQn8Bn99B84fJ6hcIA9+cptiOEa1AovASwVYwazku6MA3U2xDi8VYAWzknfXBPFBgN6OsgpnQsyRfmcKNL8xG3BGmlcfOu8jV84jWGmgMH+FM4VHMBxrM/EkA1QBLxUok1gUPpNAnoQN+MwC3yX4fEi0FThTWIQuUl9IagHFFgkew87oGZ6i9eeNgk4jH7uQNadonKokWhqJTltsmeEg08XeszNme/4FDKujlSfxPfkAAAAASUVORK5CYII=");
     }
 
 
@@ -454,10 +488,24 @@
       font-size: 12px;
     }
 
-    .check-row input {
-      width: 14px;
-      height: 14px;
-      accent-color: #18a0fb;
+    .check-row input.setting-check {
+      width: 16px;
+      height: 16px;
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      border-radius: 0;
+      background-color: transparent;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 16px 16px;
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAN5JREFUeAHtmDF2wjAQBb/WLvNAfpA+KenITbhCbpCchCNwheQk0FFCb2xLQKtdtDxo6K1qp5OamVW3csjs94ePqpKNAMt89BgbkT9m+l0sPo9O5VTJdjZrfOMnICKMCTMjnq9o2y5wcl811bx+n8/v8hLogOrilHzfxw1B3Go6eUNpmmYKgSzpWVWah9OXN79gARZgARZgARZgARZgARZgARoQdF0qzdNJDtgNQ0RpYrxAGP+Ukvvu+hA0osRLqKPrBrSnPoi4H6eX9w25xjqvzSuMT8jfADvJg+t6fgOyMV1nQsGXMAAAAABJRU5ErkJggg==");
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .check-row input.setting-check:checked {
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAVpJREFUeAHtl7FKw0AYx//fJRQEEXGxiyLo6GDX1sXJLoIgdM8b6BP4CNoniC9Q0FFcnFwcdOgDdMxUxEXQ1PP+oYOISVp7uQPJH44EAvf73d0HuU9g0ozftiBhrIE9AVZRcQznWnR4lkQyEsK1hE8uwD8kXoxESxn4hWs4kzEljZV5OYan8MgVPIa74FWAqQX+p0B7XTA4DLKxsQy3Ar1thUE3QLsp2bjsBHAmQHh/f74prQn8Bn99B84fJ6hcIA9+cptiOEa1AovASwVYwazku6MA3U2xDi8VYAWzknfXBPFBgN6OsgpnQsyRfmcKNL8xG3BGmlcfOu8jV84jWGmgMH+FM4VHMBxrM/EkA1QBLxUok1gUPpNAnoQN+MwC3yX4fEi0FThTWIQuUl9IagHFFgkew87oGZ6i9eeNgk4jH7uQNadonKokWhqJTltsmeEg08XeszNme/4FDKujlSfxPfkAAAAASUVORK5CYII=");
     }
 
     .settings-actions {
@@ -614,6 +662,134 @@
       line-height: 1;
     }
 
+    #pluginSettingsScreen {
+      width: 400px;
+      height: 600px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .plugin-settings-header {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 400px;
+      height: 54px;
+      padding: 20px 20px 10px;
+      display: flex;
+      align-items: center;
+      background: #fff;
+    }
+
+    .plugin-settings-back {
+      width: 24px;
+      height: 24px;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .plugin-settings-back-icon {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .plugin-settings-title {
+      font-size: 12px;
+      font-weight: 400;
+      line-height: normal;
+      color: #000;
+    }
+
+    .plugin-settings-body {
+      position: absolute;
+      left: 20px;
+      top: 74px;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .plugin-settings-row {
+      width: 100%;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .plugin-settings-row-label {
+      color: #111;
+      font-size: 13px;
+      line-height: normal;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .plugin-settings-switch {
+      width: 32px;
+      height: 20px;
+      min-width: 32px;
+      max-width: 32px;
+      min-height: 20px;
+      max-height: 20px;
+      flex: 0 0 32px;
+      padding: 0;
+      margin: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      background-color: transparent;
+      background-image: url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgdmlld0JveD0iMCAwIDUwIDMwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBpZD0iJiMyMjk7JiMxODg7JiMxMjg7JiMyMjk7JiMxMzM7JiMxNzk7Ij4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzBfNCkiPgo8cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iMzAiIHJ4PSIxNSIgZmlsbD0idmFyKC0tZmlsbC0wLCAjRjFGNUY3KSIvPgo8ZyBpZD0iRWxsaXBzZSA0MSIgZmlsdGVyPSJ1cmwoI2ZpbHRlcjBfZF8wXzQpIj4KPGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTIiIGZpbGw9InZhcigtLWZpbGwtMCwgd2hpdGUpIi8+CjwvZz4KPC9nPgo8L2c+CjxkZWZzPgo8ZmlsdGVyIGlkPSJmaWx0ZXIwX2RfMF80IiB4PSIwIiB5PSIzIiB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIGZpbHRlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIj4KPGZlRmxvb2QgZmxvb2Qtb3BhY2l0eT0iMCIgcmVzdWx0PSJCYWNrZ3JvdW5kSW1hZ2VGaXgiLz4KPGZlQ29sb3JNYXRyaXggaW49IlNvdXJjZUFscGhhIiB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMTI3IDAiIHJlc3VsdD0iaGFyZEFscGhhIi8+CjxmZU9mZnNldCBkeT0iMyIvPgo8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSIxLjUiLz4KPGZlQ29tcG9zaXRlIGluMj0iaGFyZEFscGhhIiBvcGVyYXRvcj0ib3V0Ii8+CjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwLjA1IDAiLz4KPGZlQmxlbmQgbW9kZT0ibm9ybWFsIiBpbjI9IkJhY2tncm91bmRJbWFnZUZpeCIgcmVzdWx0PSJlZmZlY3QxX2Ryb3BTaGFkb3dfMF80Ii8+CjxmZUJsZW5kIG1vZGU9Im5vcm1hbCIgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iZWZmZWN0MV9kcm9wU2hhZG93XzBfNCIgcmVzdWx0PSJzaGFwZSIvPgo8L2ZpbHRlcj4KPGNsaXBQYXRoIGlkPSJjbGlwMF8wXzQiPgo8cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iMzAiIHJ4PSIxNSIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K");
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-position: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .plugin-settings-switch:checked {
+      background-image: url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgdmlld0JveD0iMCAwIDUwIDMwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBpZD0iJiMyMjk7JiMxODg7JiMxMjg7JiMyMjk7JiMxMzM7JiMxNzk7Ij4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzBfNikiPgo8cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iMzAiIHJ4PSIxNSIgZmlsbD0idmFyKC0tZmlsbC0wLCAjMThBMEZCKSIvPgo8ZyBpZD0iRWxsaXBzZSA0MSIgZmlsdGVyPSJ1cmwoI2ZpbHRlcjBfZF8wXzYpIj4KPGNpcmNsZSBjeD0iMzUiIGN5PSIxNSIgcj0iMTIiIGZpbGw9InZhcigtLWZpbGwtMCwgd2hpdGUpIi8+CjwvZz4KPC9nPgo8L2c+CjxkZWZzPgo8ZmlsdGVyIGlkPSJmaWx0ZXIwX2RfMF82IiB4PSIyMCIgeT0iMyIgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIGNvbG9yLWludGVycG9sYXRpb24tZmlsdGVycz0ic1JHQiI+CjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+CjxmZUNvbG9yTWF0cml4IGluPSJTb3VyY2VBbHBoYSIgdHlwZT0ibWF0cml4IiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIiByZXN1bHQ9ImhhcmRBbHBoYSIvPgo8ZmVPZmZzZXQgZHk9IjMiLz4KPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iMS41Ii8+CjxmZUNvbXBvc2l0ZSBpbjI9ImhhcmRBbHBoYSIgb3BlcmF0b3I9Im91dCIvPgo8ZmVDb2xvck1hdHJpeCB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMC4wNSAwIi8+CjxmZUJsZW5kIG1vZGU9Im5vcm1hbCIgaW4yPSJCYWNrZ3JvdW5kSW1hZ2VGaXgiIHJlc3VsdD0iZWZmZWN0MV9kcm9wU2hhZG93XzBfNiIvPgo8ZmVCbGVuZCBtb2RlPSJub3JtYWwiIGluPSJTb3VyY2VHcmFwaGljIiBpbjI9ImVmZmVjdDFfZHJvcFNoYWRvd18wXzYiIHJlc3VsdD0ic2hhcGUiLz4KPC9maWx0ZXI+CjxjbGlwUGF0aCBpZD0iY2xpcDBfMF82Ij4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjMwIiByeD0iMTUiIGZpbGw9IndoaXRlIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg==");
+    }
+
+    .plugin-settings-input {
+      height: 48px;
+      width: 100%;
+      border: 0.5px solid #d9dade;
+      border-radius: 2px;
+      padding: 0 20px;
+      font-size: 13px;
+      color: #111;
+      background: #fff;
+    }
+
+    .plugin-settings-input:focus {
+      outline: none;
+      box-shadow: none;
+      border-color: #d9dade;
+    }
+
+    .plugin-settings-actions {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
     .empty {
       display: flex;
       align-items: center;
@@ -642,6 +818,9 @@
           <button class="pre-btn" id="scanFileBtn">整个文件</button>
           <button class="pre-btn primary" id="scanPageBtn">当前页面</button>
         </div>
+        <button class="pre-settings-btn" id="pluginSettingsBtnPre" title="插件设置">
+          <img class="pre-settings-icon" alt="设置" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAgJJREFUeAHtmPFVwjAQxj99/i9uEDeoExg3wAmsE+AG1AlgA+sE4ATiBLKB3QA20Nzr9SWBim25YOHl99730heucFcu10uASCQSiUTk0UbvRt8sulY4ApRRDuv4pl7Q00AGRmOjFUpHacx4fsDXbiBj9Iih0ResczPUP2Wayx07uucB/4jGdp7rBvcl8AP+xIHTilJi4jhA6fKE9qTwAznI+hjB5jkpQxlQV5TRFH5adXkYjRgjXFlU8NeH+CJXzpdrhCN1fkdBkJS/dI7w5PxbaRPjc7Rj1cCmeie4FYoqTZCS2TaAv1Aonc3gpxqVzhzlIlUQRDqAanEXRndGV0ZnRvc8p9hmn8rlIRlACuv8jdHCaM2fzXmuYBuxUikZwIhHcm5d8znNPfL1LYSQDCDh8W2HzZJHDSGk1wCxK7/XEEYygAWPyQ6bIY9LCCEZwAeP1JTV/QtVE0hMIYRkAORUAfsuqJ42Oa5h22ayeYUQF5CD8ptqf/UumNXYFGwjhvQiLoyuUZZLN88XRs+w7wIxJP8Bl5zVhUsEQME2ZiH3sRqB2mkiQ7jtn4LfvWYIBLUJ7j52gv0CqVrvfffXrVCQOR7Z3F9TGRbrUpugUNZ2N5CkwX0a3Y5jgpGi2fEIzc3gBzxEj8iwfXxYHS3+duzYOxSO9HB3E4We5XkkEolETpMfsr2uPl2O+58AAAAASUVORK5CYII=">
+        </button>
       </div>
     </div>
 
@@ -653,11 +832,13 @@
             <div class="scope-label" id="scopeLabel">当前页面</div>
           </div>
           <div class="top-right">
+            <button class="icon-btn" id="pluginSettingsBtn" title="插件设置"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAAgJJREFUeAHtmPFVwjAQxj99/i9uEDeoExg3wAmsE+AG1AlgA+sE4ATiBLKB3QA20Nzr9SWBim25YOHl99730heucFcu10uASCQSiUTk0UbvRt8sulY4ApRRDuv4pl7Q00AGRmOjFUpHacx4fsDXbiBj9Iih0ResczPUP2Wayx07uucB/4jGdp7rBvcl8AP+xIHTilJi4jhA6fKE9qTwAznI+hjB5jkpQxlQV5TRFH5adXkYjRgjXFlU8NeH+CJXzpdrhCN1fkdBkJS/dI7w5PxbaRPjc7Rj1cCmeie4FYoqTZCS2TaAv1Aonc3gpxqVzhzlIlUQRDqAanEXRndGV0ZnRvc8p9hmn8rlIRlACuv8jdHCaM2fzXmuYBuxUikZwIhHcm5d8znNPfL1LYSQDCDh8W2HzZJHDSGk1wCxK7/XEEYygAWPyQ6bIY9LCCEZwAeP1JTV/QtVE0hMIYRkAORUAfsuqJ42Oa5h22ayeYUQF5CD8ptqf/UumNXYFGwjhvQiLoyuUZZLN88XRs+w7wIxJP8Bl5zVhUsEQME2ZiH3sRqB2mkiQ7jtn4LfvWYIBLUJ7j52gv0CqVrvfffXrVCQOR7Z3F9TGRbrUpugUNZ2N5CkwX0a3Y5jgpGi2fEIzc3gBzxEj8iwfXxYHS3+duzYOxSO9HB3E4We5XkkEolETpMfsr2uPl2O+58AAAAASUVORK5CYII=" class="icon-img" alt="设置"></button>
             <button class="icon-btn" id="refreshBtn"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGdSURBVHgB7ZiNUcMwDIUfMABlAjRCN8AbwAaUCegGzQjdADpB2aBsEJiAMkG7QYkvFk6chuZPIbnqu9PlrrWcJ0d2pACKoiiKoiiDYoIRY8XvEvtKjDBCKLGDMxuEwcAxiS0T2yAVbO0Q2CLw4bEb52vwD5ATkBXKqRMGMA98N25sdswaPaYcwQu1Yh7gNy4hn0LTP+axPrPE4sx4gjAELz7CcVGcHoTqRPBBiJ5iC5SLb8tScO5feKMSuoeP4B2EMEhX6AVyvLp7TKs6XKI65K6fkOPDXUUD2EOOfXCvk9QJgNlCji1q0iSAQXGWAVxjQNQJgDfYDeQg1KRJAJKvep47rupQJwA+o+8hx527fkMILuQI3UPwBZ0Yc/gyugk2RUzJf2s39yOE4UambhNiywN+gtlSYQIvvnLut2GCfBNiizvjRFGJzzPyHdgMaSNkS2juzmL0/EUjQrGFPJa/CxTbzLAVjdCQC7SDc9qu/q377SkYQyh2aG9IT5p3Z5IFYicQ8h8BDDriCv1gV3gF/8RXGMGqK4qiKIpyih/fuHxzA4ru+wAAAABJRU5ErkJggg==" class="icon-img" alt="刷新"></button>
             <select class="tiny-select" id="sourceFilter">
               <option value="all">全部组件</option>
               <option value="external">外部组件</option>
-              <option value="internal">内部组件</option>
+              <option value="library">组件库</option>
+              <option value="local">本地组件</option>
             </select>
           </div>
         </div>
@@ -694,13 +875,13 @@
 
         <div class="settings hidden" id="settingsBar">
           <div class="check-rows">
-            <label class="check-row"><input type="checkbox" id="moveInternalToggle"> 移动当前文件组件</label>
-            <label class="check-row"><input type="checkbox" id="externalSeparatePageToggle"> 外部组件单独页面</label>
+            <label class="check-row"><input class="setting-check" type="checkbox" id="moveInternalToggle"> 移动当前文件组件</label>
+            <label class="check-row"><input class="setting-check" type="checkbox" id="externalSeparatePageToggle"> 外部组件单独页面</label>
           </div>
           <div class="impact" id="impact">影响预览：组件 0 · 实例 0</div>
           <div class="settings-actions">
             <button class="mini-btn" id="closeSettingsBtn">✕</button>
-            <input class="page-input" id="pageNameInput" value="📦 Components Library" />
+            <input class="page-input" id="pageNameInput" value="_Comp" />
             <button class="go-btn" id="goCollectBtn">GO</button>
           </div>
         </div>
@@ -719,6 +900,32 @@
         </div>
       </div>
     </div>
+
+    <div class="screen hidden" id="pluginSettingsScreen">
+      <div class="plugin-settings-header">
+        <button class="plugin-settings-back" id="pluginSettingsBackBtn" title="返回">
+          <img class="plugin-settings-back-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAB3SURBVHgB7dmxCYBAEETRwUoswf4TS7EE7UDvwANTo505/oMNzP6A2UkAgCBbu7PdrkAj/m53KMw3/ny/YxBfhfgqxFchvgrxVYivEh2/yix+0T+XJhD9Cw2McMEIF4xwwQgXjHDBCBdTjojUR/S3gcgHDgCY0AP8b2iCFbWkpwAAAABJRU5ErkJggg==" alt="返回">
+        </button>
+        <div class="plugin-settings-title">插件设置</div>
+      </div>
+
+      <div class="plugin-settings-body">
+        <label class="plugin-settings-row">
+          <span class="plugin-settings-row-label">移动当前文件组件</span>
+          <input class="plugin-settings-switch" type="checkbox" id="pluginMoveInternalToggle">
+        </label>
+        <label class="plugin-settings-row">
+          <span class="plugin-settings-row-label">外部组件单独页面</span>
+          <input class="plugin-settings-switch" type="checkbox" id="pluginExternalSeparatePageToggle">
+        </label>
+        <input class="plugin-settings-input" id="pluginDefaultPageNameInput" value="_Comp">
+      </div>
+
+      <div class="plugin-settings-actions">
+        <button class="pre-btn" id="pluginRestoreDefaultBtn">恢复默认</button>
+        <button class="pre-btn primary" id="pluginSaveBtn">保存设置</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -732,9 +939,16 @@
     let sortState = { key: 'name', direction: 'asc' };
     let scanButtonMode = 'page';
     let componentById = new Map();
+    let previousScreenForSettings = 'main';
+    let pluginSettings = {
+      moveInternal: true,
+      externalSeparatePage: false,
+      defaultTargetPageName: '_Comp'
+    };
 
     const preScreen = document.getElementById('preScreen');
     const mainScreen = document.getElementById('mainScreen');
+    const pluginSettingsScreen = document.getElementById('pluginSettingsScreen');
     const listEl = document.getElementById('list');
 
     const scopeLabel = document.getElementById('scopeLabel');
@@ -766,6 +980,14 @@
     const preHeroImage = document.getElementById('preHeroImage');
     const preSubtitleImage = document.getElementById('preSubtitleImage');
     const preSubtitleText = document.getElementById('preSubtitleText');
+    const pluginSettingsBtn = document.getElementById('pluginSettingsBtn');
+    const pluginSettingsBtnPre = document.getElementById('pluginSettingsBtnPre');
+    const pluginSettingsBackBtn = document.getElementById('pluginSettingsBackBtn');
+    const pluginMoveInternalToggle = document.getElementById('pluginMoveInternalToggle');
+    const pluginExternalSeparatePageToggle = document.getElementById('pluginExternalSeparatePageToggle');
+    const pluginDefaultPageNameInput = document.getElementById('pluginDefaultPageNameInput');
+    const pluginRestoreDefaultBtn = document.getElementById('pluginRestoreDefaultBtn');
+    const pluginSaveBtn = document.getElementById('pluginSaveBtn');
 
     function initStateAAssets() {
       preHeroImage.onerror = () => {
@@ -776,6 +998,46 @@
         preSubtitleImage.classList.add('subtitle-hidden');
         preSubtitleText.classList.remove('subtitle-hidden');
       };
+    }
+
+    function syncPluginSettingsToUI() {
+      moveInternalToggle.checked = pluginSettings.moveInternal === true;
+      externalSeparatePageToggle.checked = pluginSettings.externalSeparatePage === true;
+      pageNameInput.value = pluginSettings.defaultTargetPageName || '_Comp';
+
+      pluginMoveInternalToggle.checked = pluginSettings.moveInternal === true;
+      pluginExternalSeparatePageToggle.checked = pluginSettings.externalSeparatePage === true;
+      pluginDefaultPageNameInput.value = pluginSettings.defaultTargetPageName || '_Comp';
+    }
+
+    function applyPluginSettingsFromPayload(settings) {
+      if (!settings) return;
+      pluginSettings = {
+        moveInternal: settings.moveInternal === true,
+        externalSeparatePage: settings.externalSeparatePage === true,
+        defaultTargetPageName: (settings.defaultTargetPageName || '_Comp').trim() || '_Comp'
+      };
+      syncPluginSettingsToUI();
+      updateImpactAndOptions();
+    }
+
+    function openPluginSettingsScreen(fromScreen) {
+      previousScreenForSettings = fromScreen || 'main';
+      preScreen.classList.add('hidden');
+      mainScreen.classList.add('hidden');
+      pluginSettingsScreen.classList.remove('hidden');
+      syncPluginSettingsToUI();
+    }
+
+    function closePluginSettingsScreen() {
+      pluginSettingsScreen.classList.add('hidden');
+      if (previousScreenForSettings === 'pre') {
+        preScreen.classList.remove('hidden');
+        mainScreen.classList.add('hidden');
+      } else {
+        preScreen.classList.add('hidden');
+        mainScreen.classList.remove('hidden');
+      }
     }
 
     function showBottom(state) {
@@ -890,9 +1152,19 @@
     function applyFilterAndRender() {
       if (!lastScanData) return;
       const source = sourceFilter.value;
+      const getLocationType = (c) => {
+        if (c.locationType === 'external' || c.locationType === 'library' || c.locationType === 'local') {
+          return c.locationType;
+        }
+        return c.isExternal ? 'external' : 'local';
+      };
+      const locationRank = { external: 0, library: 1, local: 2 };
+      const locationText = { external: '外部组件', library: '组件库', local: '本地页面' };
       filtered = (lastScanData.components || []).filter((c) => {
-        if (source === 'external') return c.isExternal === true;
-        if (source === 'internal') return c.isExternal === false;
+        const locationType = getLocationType(c);
+        if (source === 'external') return locationType === 'external';
+        if (source === 'library') return locationType === 'library';
+        if (source === 'local') return locationType === 'local';
         return true;
       });
       const direction = sortState.direction === 'asc' ? 1 : -1;
@@ -906,8 +1178,8 @@
           return (ta - tb) * direction;
         }
         if (sortState.key === 'location') {
-          const la = a.isExternal ? 1 : 0;
-          const lb = b.isExternal ? 1 : 0;
+          const la = locationRank[getLocationType(a)];
+          const lb = locationRank[getLocationType(b)];
           return (la - lb) * direction;
         }
         return a.name.localeCompare(b.name, 'zh-Hans-CN') * direction;
@@ -918,7 +1190,8 @@
       } else {
         listEl.innerHTML = filtered.map((c, idx) => {
           const typeText = c.type === 'component-set' ? '变体' : '组件';
-          const posText = c.isExternal ? '外部' : '本地';
+          const locationType = getLocationType(c);
+          const posText = locationText[locationType];
           const sourceNodeId = c.sourceNodeId || '';
           const firstInstanceId = c.firstInstanceId || '';
           const checked = selectedComponentIds.has(c.id) ? 'checked' : '';
@@ -945,6 +1218,7 @@
     function openMainIfNeeded() {
       hasScanned = true;
       preScreen.classList.add('hidden');
+      pluginSettingsScreen.classList.add('hidden');
       mainScreen.classList.remove('hidden');
       parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 400, height: 600 } }, '*');
     }
@@ -954,8 +1228,26 @@
     document.getElementById('refreshBtn').addEventListener('click', () => scan(currentMode));
     document.getElementById('backBtn').addEventListener('click', () => {
       mainScreen.classList.add('hidden');
+      pluginSettingsScreen.classList.add('hidden');
       preScreen.classList.remove('hidden');
       parent.postMessage({ pluginMessage: { type: 'resize-ui', width: 400, height: 600 } }, '*');
+    });
+    pluginSettingsBtn.addEventListener('click', () => openPluginSettingsScreen('main'));
+    pluginSettingsBtnPre.addEventListener('click', () => openPluginSettingsScreen('pre'));
+    pluginSettingsBackBtn.addEventListener('click', () => closePluginSettingsScreen());
+    pluginRestoreDefaultBtn.addEventListener('click', () => {
+      parent.postMessage({ pluginMessage: { type: 'reset-plugin-settings' } }, '*');
+    });
+    pluginSaveBtn.addEventListener('click', () => {
+      const defaultTargetPageName = (pluginDefaultPageNameInput.value || '').trim() || '_Comp';
+      parent.postMessage({
+        pluginMessage: {
+          type: 'save-plugin-settings',
+          moveInternal: pluginMoveInternalToggle.checked,
+          externalSeparatePage: pluginExternalSeparatePageToggle.checked,
+          defaultTargetPageName
+        }
+      }, '*');
     });
 
     sourceFilter.addEventListener('change', applyFilterAndRender);
@@ -1030,6 +1322,7 @@
     });
 
     document.getElementById('openSettingsBtn').addEventListener('click', () => {
+      syncPluginSettingsToUI();
       showBottom('settings');
     });
 
@@ -1041,6 +1334,7 @@
     externalSeparatePageToggle.addEventListener('change', applyFilterAndRender);
 
     initStateAAssets();
+    parent.postMessage({ pluginMessage: { type: 'get-plugin-settings' } }, '*');
 
     document.getElementById('goCollectBtn').addEventListener('click', () => {
       const pageName = pageNameInput.value.trim();
@@ -1062,6 +1356,20 @@
       progressText.textContent = '准备收集...';
       progressFill.style.width = '0%';
 
+      // 收集阶段修改了目标页时，同步更新插件预设目标页
+      if (pluginSettings.defaultTargetPageName !== pageName) {
+        pluginSettings.defaultTargetPageName = pageName;
+        pluginDefaultPageNameInput.value = pageName;
+        parent.postMessage({
+          pluginMessage: {
+            type: 'save-plugin-settings',
+            moveInternal: pluginSettings.moveInternal === true,
+            externalSeparatePage: pluginSettings.externalSeparatePage === true,
+            defaultTargetPageName: pageName
+          }
+        }, '*');
+      }
+
       parent.postMessage({
         pluginMessage: {
           type: 'collect-components',
@@ -1082,6 +1390,19 @@
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
+
+      if (msg.type === 'plugin-settings') {
+        applyPluginSettingsFromPayload(msg.settings);
+      }
+
+      if (msg.type === 'plugin-settings-saved') {
+        applyPluginSettingsFromPayload(msg.settings);
+        closePluginSettingsScreen();
+      }
+
+      if (msg.type === 'plugin-settings-reset') {
+        applyPluginSettingsFromPayload(msg.settings);
+      }
 
       if (msg.type === 'selection-changed') {
         hasSelectionInCanvas = msg.hasSelection === true;
