@@ -445,7 +445,7 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
   if (scope === 'selection') {
     console.log('Processing selection mode');
     if (shouldSkipPageForScanning(figma.currentPage, skipPageNames)) {
-      return buildScanResults(
+      return await buildScanResults(
         componentsMap,
         scope,
         await resolveSelectionComponentKey(figma.currentPage.selection),
@@ -515,7 +515,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       }
     }
     
-    return buildScanResults(
+    await expandComponentsWithNestedDependencies(componentsMap);
+    return await buildScanResults(
       componentsMap,
       scope,
       await resolveSelectionComponentKey(figma.currentPage.selection),
@@ -527,7 +528,7 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
     console.log('Processing page mode');
     const currentPage = figma.currentPage;
     if (shouldSkipPageForScanning(currentPage, skipPageNames)) {
-      return buildScanResults(
+      return await buildScanResults(
         componentsMap,
         scope,
         await resolveSelectionComponentKey(figma.currentPage.selection),
@@ -632,7 +633,7 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
     
     const concurrencyLimit = 8;
     if (totalPageCount === 0) {
-      return buildScanResults(
+      return await buildScanResults(
         componentsMap,
         scope,
         await resolveSelectionComponentKey(figma.currentPage.selection),
@@ -669,7 +670,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
     }
   }
   
-  return buildScanResults(
+  await expandComponentsWithNestedDependencies(componentsMap);
+  return await buildScanResults(
     componentsMap,
     scope,
     await resolveSelectionComponentKey(figma.currentPage.selection),
@@ -726,8 +728,35 @@ function hasCollectedMotherComponentInTargetPage(
     : lookup.componentIds.has(sourceNode.id);
 }
 
+async function hasUnresolvedInstancesForCollectedComponent(
+  info: ComponentInfo,
+  targetPage: PageNode | null
+): Promise<boolean> {
+  if (!targetPage) return false;
+
+  const expectedType: 'COMPONENT' | 'COMPONENT_SET' = info.componentSet ? 'COMPONENT_SET' : 'COMPONENT';
+  const collectedNode = findCollectedNodeOnPage<SceneNode>(targetPage, info, expectedType);
+  if (!collectedNode) return false;
+
+  for (const instance of info.instances) {
+    try {
+      const mainComponent = await instance.getMainComponentAsync();
+      if (!mainComponent) {
+        return true;
+      }
+      if (!isMainBoundToTarget(mainComponent, collectedNode)) {
+        return true;
+      }
+    } catch (_error) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // 构建扫描结果
-function buildScanResults(
+async function buildScanResults(
   componentsMap: Map<string, ComponentInfo>,
   scope: string,
   selectedComponentKey: string | null,
@@ -753,9 +782,14 @@ function buildScanResults(
     page => normalizePageName(page.name) === normalizedTargetPageName
   ) || null;
   const targetPageLookup = targetPage ? buildCollectedLookupForTargetPage(targetPage) : null;
-  const entriesToDisplay = componentEntries.filter(([, info]) =>
-    !hasCollectedMotherComponentInTargetPage(info, targetPageLookup)
-  );
+  const displayFlags = await Promise.all(componentEntries.map(async ([, info]) => {
+    const hasCollectedMother = hasCollectedMotherComponentInTargetPage(info, targetPageLookup);
+    if (!hasCollectedMother) return true;
+
+    const hasUnresolvedInstances = await hasUnresolvedInstancesForCollectedComponent(info, targetPage);
+    return hasUnresolvedInstances;
+  }));
+  const entriesToDisplay = componentEntries.filter((_, index) => displayFlags[index]);
 
   const maxComponentsToShow = 300;
   const componentsToShow = entriesToDisplay.length > maxComponentsToShow
@@ -2095,8 +2129,42 @@ async function processComponentSet(
     return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone, failureDetails };
   }
 
-  // 内部组件未开启移动：不克隆，保留原母组件
+  // 内部组件未开启移动：优先复用目标页已有母组件，否则克隆到目标页
   if (isInternal && !moveInternal) {
+    if (!existingSet) {
+      const clonedSet = componentSet.clone();
+      targetPage.appendChild(clonedSet);
+      processedComponents.push(clonedSet);
+      existingSet = clonedSet;
+      markCollectedSource(existingSet, info);
+      cloned = true;
+    }
+
+    const instances = instanceMap.get(getCollectionKeyFromInfo(info)) || [];
+    instancesAttempted += instances.length;
+    await Promise.all(instances.map(async instance => {
+      try {
+        const mainComponent = await instance.getMainComponentAsync();
+        const newVariant = findMatchingVariantForInstance(existingSet!, instance, mainComponent);
+        if (newVariant) {
+          instance.swapComponent(newVariant);
+          instancesRebound++;
+        } else {
+          instancesFailed++;
+          appendDiagnosticLine(
+            failureDetails,
+            `[set-internal-clone] 实例 ${instance.id} 失败：未找到匹配变体 | main=${mainComponent?.name || 'n/a'} | target=${existingSet!.name} | variantProps=${JSON.stringify(getVariantPropsForInstance(instance))}`
+          );
+        }
+      } catch (e) {
+        instancesFailed++;
+        appendDiagnosticLine(
+          failureDetails,
+          `[set-internal-clone] 实例 ${instance.id} 失败：${getErrorMessage(e)} | variantProps=${JSON.stringify(getVariantPropsForInstance(instance))}`
+        );
+      }
+    }));
+
     return { node: existingSet, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone, failureDetails };
   }
 
@@ -2221,8 +2289,29 @@ async function processSingleComponent(
     return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone, failureDetails };
   }
 
-  // 内部组件未开启移动：不克隆，保留原母组件
+  // 内部组件未开启移动：优先复用目标页已有母组件，否则克隆到目标页
   if (isInternal && !moveInternal) {
+    if (!existingComponent) {
+      const clonedComponent = component.clone();
+      targetPage.appendChild(clonedComponent);
+      processedComponents.push(clonedComponent);
+      existingComponent = clonedComponent;
+      markCollectedSource(existingComponent, info);
+      cloned = true;
+    }
+
+    const instances = instanceMap.get(getCollectionKeyFromInfo(info)) || [];
+    instancesAttempted += instances.length;
+    await Promise.all(instances.map(async instance => {
+      try {
+        instance.swapComponent(existingComponent!);
+        instancesRebound++;
+      } catch (e) {
+        instancesFailed++;
+        appendDiagnosticLine(failureDetails, `[single-internal-clone] 实例 ${instance.id} 失败：${getErrorMessage(e)}`);
+      }
+    }));
+
     return { node: existingComponent, instancesAttempted, instancesRebound, instancesFailed, movedInternal, cloned, fallbackToClone, failureDetails };
   }
 
