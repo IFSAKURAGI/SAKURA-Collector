@@ -910,6 +910,8 @@
   <script>
     let hasScanned = false;
     let currentMode = 'page';
+    let lastRequestedMode = 'page';
+    let lastScanRequestId = 0;
     let lastScanData = null;
     let filtered = [];
     let hasSelectionInCanvas = false;
@@ -1028,12 +1030,15 @@
 
     function scan(mode) {
       currentMode = mode;
+      lastRequestedMode = mode;
+      lastScanRequestId += 1;
+      const requestId = lastScanRequestId;
       openMainIfNeeded();
       showBottom('progress');
       document.getElementById('progressLine').classList.add('running');
       progressText.textContent = '开始扫描...';
       progressFill.style.width = '0%';
-      parent.postMessage({ pluginMessage: { type: `scan-${mode}` } }, '*');
+      parent.postMessage({ pluginMessage: { type: `scan-${mode}`, requestId } }, '*');
     }
 
     function updateScanSelectionButton() {
@@ -1253,7 +1258,7 @@
 
     document.getElementById('scanFileBtn').addEventListener('click', () => scan('file'));
     document.getElementById('scanPageBtn').addEventListener('click', () => scan(scanButtonMode));
-    document.getElementById('refreshBtn').addEventListener('click', () => scan(currentMode));
+    document.getElementById('refreshBtn').addEventListener('click', () => scan(lastRequestedMode || currentMode));
     document.getElementById('backBtn').addEventListener('click', () => {
       mainScreen.classList.add('hidden');
       pluginSettingsScreen.classList.add('hidden');
@@ -1390,7 +1395,7 @@
         pluginMessage: {
           type: 'collect-components',
           targetPageName: pageName,
-          scope: currentMode,
+          scope: lastRequestedMode || currentMode,
           externalOnly,
           moveInternal,
           externalSeparatePage,
@@ -1433,11 +1438,15 @@
       }
 
       if (msg.type === 'scan-results') {
+        if (typeof msg.requestId === 'number' && msg.requestId !== lastScanRequestId) {
+          return;
+        }
         openMainIfNeeded();
         lastScanData = msg.data;
         componentById = new Map((msg.data.components || []).map((c) => [c.id, c]));
         selectedComponentIds.clear();
-        currentMode = msg.data.scope || currentMode;
+        currentMode = msg.data.scope || lastRequestedMode || currentMode;
+        lastRequestedMode = currentMode;
         const map = { file: '整个文件', page: '当前页面', selection: '当前选择' };
         scopeLabel.textContent = map[currentMode] || '当前页面';
         activeComponentId = msg.data.selectedComponentKey || null;
@@ -1449,6 +1458,9 @@
       }
 
       if (msg.type === 'progress') {
+        if (typeof msg.requestId === 'number' && msg.requestId !== lastScanRequestId) {
+          return;
+        }
         openMainIfNeeded();
         showBottom('progress');
         document.getElementById('progressLine').classList.add('running');

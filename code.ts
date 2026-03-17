@@ -326,22 +326,22 @@ figma.ui.onmessage = async (msg) => {
 
     case 'scan-selection': {
       // 扫描当前选择
-      const selectionResult = await scanFileForComponents('selection');
-      figma.ui.postMessage({ type: 'scan-results', data: selectionResult });
+      const selectionResult = await scanFileForComponents('selection', msg.requestId);
+      figma.ui.postMessage({ type: 'scan-results', data: selectionResult, requestId: msg.requestId });
       break;
     }
 
     case 'scan-page': {
       // 扫描当前页面
-      const pageResult = await scanFileForComponents('page');
-      figma.ui.postMessage({ type: 'scan-results', data: pageResult });
+      const pageResult = await scanFileForComponents('page', msg.requestId);
+      figma.ui.postMessage({ type: 'scan-results', data: pageResult, requestId: msg.requestId });
       break;
     }
 
     case 'scan-file': {
       // 扫描整个文件
-      const fileResult = await scanFileForComponents('file');
-      figma.ui.postMessage({ type: 'scan-results', data: fileResult });
+      const fileResult = await scanFileForComponents('file', msg.requestId);
+      figma.ui.postMessage({ type: 'scan-results', data: fileResult, requestId: msg.requestId });
       break;
     }
 
@@ -427,7 +427,10 @@ figma.ui.onmessage = async (msg) => {
 
 
 // 扫描文件或选中画板中的所有组件
-async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
+async function scanFileForComponents(
+  scope: 'file' | 'page' | 'selection',
+  requestId?: number
+) {
   console.log('scanFileForComponents called with scope:', scope);
   
   const componentsMap = new Map<string, ComponentInfo>();
@@ -490,7 +493,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
               type: 'progress', 
               message: `扫描选择项 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` + 
                        (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''),
-              progress: progress
+              progress: progress,
+              requestId
             });
           } catch (error) {
             console.log('Failed to send progress message, plugin might be closing');
@@ -540,7 +544,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       figma.ui.postMessage({ 
         type: 'progress', 
         message: `开始扫描页面: ${currentPage.name}`,
-        progress: 10
+        progress: 10,
+        requestId
       });
     } catch (error) {
       console.log('Failed to send progress message, plugin might be closing');
@@ -584,7 +589,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
             type: 'progress', 
             message: `扫描页面 ${processedNodes}/${actualTotalNodes}，预计剩余时间: ${remainingTime}秒` + 
                      (totalNodes > maxNodesToProcess ? ` (已限制处理数量)` : ''),
-            progress: progress
+            progress: progress,
+            requestId
           });
         } catch (error) {
           console.log('Failed to send progress message, plugin might be closing');
@@ -612,7 +618,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
       figma.ui.postMessage({ 
         type: 'progress', 
         message: '扫描当前页面完成',
-        progress: 90
+        progress: 90,
+        requestId
       });
     } catch (error) {
       console.log('Failed to send progress message, plugin might be closing');
@@ -652,7 +659,8 @@ async function scanFileForComponents(scope: 'file' | 'page' | 'selection') {
         figma.ui.postMessage({ 
           type: 'progress', 
           message: `扫描页面 ${processedPages}/${totalPageCount}: ${batch.map(p => p.name).join(', ')}`,
-          progress: Math.floor((processedPages / totalPageCount) * 100)
+          progress: Math.floor((processedPages / totalPageCount) * 100),
+          requestId
         });
       } catch (error) {
         console.log('Failed to send progress message, plugin might be closing');
